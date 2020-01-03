@@ -91,10 +91,23 @@ def clustering(X, Z, Pr_b, Phi, R, n_clusters, theta, tol, n_init = 10, random_s
 
     return R
 
-# TODO
-def correction(X, R, Phi):
+
+def correction(X, R, Phi, ridge_lambda = 1.0):
     n_cells = X.shape[0]
+    n_clusters = R.shape[1]
+    n_batches = Phi.shape[1]
     Phi_1 = torch.cat((torch.ones(n_cells, 1), Phi), dim = 1)
+
+    Z = X
+    for k in range(n_clusters):
+        diag_R = torch.diag(R[:,k])
+        inv_mat = torch.inverse(torch.matmul(torch.matmul(Phi_1.t(), diag_R), Phi_1) + ridge_lambda * torch.eye(n_batches + 1, n_batches + 1))
+        W = torch.matmul(inv_mat, torch.matmul(torch.matmul(Phi_1.t(), diag_R), X))
+        W[0, :] = 0
+        Z = X - torch.matmul(torch.matmul(Phi_1, W), diag_R)
+
+    return Z
+
 
 # TODO
 def is_convergent(X, Y, level, tol):
