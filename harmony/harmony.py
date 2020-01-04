@@ -4,7 +4,7 @@ import numpy as np
 
 from sklearn.cluster import KMeans
 from torch.nn.functional import normalize
-from utils import one_hot_tensor
+from .utils import one_hot_tensor
 
 def harmonize(X, batch_mat, n_clusters = None, tau = 0, max_iter = 10, tol_harmony = 1e-4, tol_clustering = 1e-5, ridge_lambda = 1.0):
     Z = torch.tensor(X)
