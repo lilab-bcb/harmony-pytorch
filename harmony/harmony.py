@@ -2,11 +2,21 @@ import torch
 
 import numpy as np
 
+from pandas import DataFrame
 from sklearn.cluster import KMeans
 from torch.nn.functional import normalize
 from .utils import one_hot_tensor
 
-def harmonize(X, batch_mat, n_clusters = None, tau = 0, max_iter = 10, tol_harmony = 1e-4, tol_clustering = 1e-5, ridge_lambda = 1.0):
+def harmonize(
+    X: np.array,
+    batch_mat: DataFrame,
+    n_clusters: int = None,
+    tau: int = 0,
+    max_iter: int = 10,
+    tol_harmony: float = 1e-4,
+    tol_clustering: float = 1e-5,
+    ridge_lambda: float = 1.0,
+) -> torch.Tensor:
     X_tensor = torch.tensor(X, dtype = torch.float)
     Z = X_tensor.clone()
     n_cells = X_tensor.shape[0]
