@@ -1,0 +1,2 @@
+include versioneer.py
+include harmony/_version.py
