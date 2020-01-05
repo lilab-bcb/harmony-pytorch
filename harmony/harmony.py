@@ -1,4 +1,5 @@
 import torch
+import time
 
 import numpy as np
 
@@ -6,6 +7,9 @@ from pandas import DataFrame
 from sklearn.cluster import KMeans
 from torch.nn.functional import normalize
 from .utils import one_hot_tensor
+
+import logging
+logger = logging.getLogger("harmony")
 
 def harmonize(
     X: np.array,
@@ -17,6 +21,9 @@ def harmonize(
     tol_clustering: float = 1e-5,
     ridge_lambda: float = 1.0,
 ) -> torch.Tensor:
+
+    start = time.perf_counter()
+
     X_tensor = torch.tensor(X, dtype = torch.float)
     Z = X_tensor.clone()
     n_cells = X_tensor.shape[0]
@@ -49,6 +56,9 @@ def harmonize(
             break
         else:
             Z = Z_new
+
+    end = time.perf_counter()
+    logger.info("Harmony integration is done. Time spent = {:.2f}s.".format(end - start))
 
     return Z
 
