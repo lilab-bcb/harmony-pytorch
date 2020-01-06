@@ -21,12 +21,14 @@ def harmonize(
     tol_clustering: float = 1e-5,
     ridge_lambda: float = 1.0,
     correction_method: str = "fast",
+    random_state: int = 0,
 ) -> torch.Tensor:
 
     start = time.perf_counter()
 
     X_tensor = torch.tensor(X, dtype = torch.float)
     Z = X_tensor.clone()
+    Z_norm = normalize(Z, p = 2, dim = 1)
     n_cells = X_tensor.shape[0]
 
     batch_codes = batch_mat.astype('category').cat.codes.astype('category')
@@ -45,6 +47,7 @@ def harmonize(
         tau = np.random.randint(5, 21)
 
     theta = len(N_b) * (1 - torch.exp(- N_b.float() / (n_clusters * tau)) ** 2)
+
     
     assert correction_method in ["fast", "original"]
 
@@ -52,7 +55,7 @@ def harmonize(
     objectives_harmony = []
 
     for i in range(max_iter):
-        R, Y = clustering(X_tensor, Z, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony)
+        R, Y = clustering(X_tensor, Z_norm, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, random_state)
         Z_new = correction(X_tensor, R, Phi, ridge_lambda, correction_method)
         
         if is_convergent_harmony(objectives_harmony, tol = tol_harmony):
@@ -66,7 +69,7 @@ def harmonize(
     return Z
 
 
-def clustering(X, Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, n_init = 10, random_state = 0, max_iter = 200, sigma = 0.1):
+def clustering(X, Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, random_state, n_init = 10, max_iter = 200, sigma = 0.1):
     
     # Initialize cluster centroids
     n_cells = Z.shape[0]
@@ -137,7 +140,7 @@ def correction(X, R, Phi, ridge_lambda, correction_method):
     if correction_method == 'original':
         return correction_original(X, R, Phi, ridge_lambda)
     else:
-        return correction_fast(X, R, Phi)
+        return correction_fast(X, R, Phi, ridge_lambda)
 
 
 def correction_original(X, R, Phi, ridge_lambda):
@@ -148,8 +151,7 @@ def correction_original(X, R, Phi, ridge_lambda):
 
     Z = X.clone()
     for k in range(n_clusters):
-        #Phi_t_diag_R = torch.matmul(Phi_1.t(), torch.diag(R[:,k]))
-        Phi_t_diag_R = Phi_1.t() * R[:,k]
+        Phi_t_diag_R = Phi_1.t() * R[:,k].view(1, -1)
         inv_mat = torch.inverse(torch.matmul(Phi_t_diag_R, Phi_1) + ridge_lambda * torch.eye(n_batches + 1, n_batches + 1))
         W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
         W[0, :] = 0
@@ -158,7 +160,7 @@ def correction_original(X, R, Phi, ridge_lambda):
     return Z
 
 # TODO
-def correction_fast(X, R, Phi):
+def correction_fast(X, R, Phi, ridge_lambda):
     return None
 
 def compute_objective(Y_norm, Z_norm, R, Phi, theta, sigma, O, E, objective_arr):
