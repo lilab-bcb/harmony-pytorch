@@ -190,7 +190,7 @@ Let
 $$
 \begin{aligned}
 N_k &= \sum_{i = 1}^N R_{ik},\\
-N_{bk} &= \sum_{i = 1}^N \phi_{ib}R_{ik}.
+N_{bk} &= \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad \Rightarrow \qquad N = \phi^T R.
 \end{aligned}
 $$
 
