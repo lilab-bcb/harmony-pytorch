@@ -44,13 +44,14 @@ def harmonize(
 
     R = torch.zeros(n_cells, n_clusters, dtype = torch.float)
 
-    if tau > 0:
-        theta = len(N_b) * (1 - torch.exp(- N_b / (n_clusters * tau)) ** 2)
-
     if theta is None:
-        theta = torch.tensor([2.]).expand(n_batches)
-    else:
-        theta = torch.tensor([theta], dtype = torch.float).expand(n_batches)
+        theta = 2.0
+
+    theta = torch.tensor([theta], dtype = torch.float).expand(n_batches)
+
+    if tau > 0:
+        theta = theta * (1 - torch.exp(- N_b / (n_clusters * tau)) ** 2)
+
     
     assert correction_method in ["fast", "original"]
 
