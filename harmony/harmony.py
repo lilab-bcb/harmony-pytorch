@@ -15,26 +15,27 @@ def harmonize(
     X: np.array,
     batch_mat: DataFrame,
     n_clusters: int = None,
+    theta: float = None,
     tau: int = 0,
-    max_iter: int = 10,
+    max_iter_harmony: int = 10,
+    max_iter_clustering: int = 200,
     tol_harmony: float = 1e-4,
     tol_clustering: float = 1e-5,
     ridge_lambda: float = 1.0,
+    sigma: float = 0.1,
     correction_method: str = "fast",
     random_state: int = 0,
 ) -> torch.Tensor:
 
     start = time.perf_counter()
 
-    X_tensor = torch.tensor(X, dtype = torch.float)
-    Z = X_tensor.clone()
-    Z_norm = normalize(Z, p = 2, dim = 1)
-    n_cells = X_tensor.shape[0]
+    Z = torch.tensor(X, dtype = torch.float)
+    n_cells = Z.shape[0]
 
     batch_codes = batch_mat.astype('category').cat.codes.astype('category')
     n_batches = batch_codes.nunique()
-    N_b = torch.tensor(batch_codes.value_counts(sort = False).values)
-    Pr_b = N_b.float() / n_cells
+    N_b = torch.tensor(batch_codes.value_counts(sort = False).values, dtype = torch.float)
+    Pr_b = N_b / n_cells
 
     Phi = one_hot_tensor(batch_codes)
 
@@ -43,45 +44,45 @@ def harmonize(
 
     R = torch.zeros(n_cells, n_clusters, dtype = torch.float)
 
-    if tau <= 0:
-        tau = np.random.randint(5, 21)
+    if tau > 0:
+        theta = len(N_b) * (1 - torch.exp(- N_b / (n_clusters * tau)) ** 2)
 
-    theta = len(N_b) * (1 - torch.exp(- N_b.float() / (n_clusters * tau)) ** 2)
-
+    if theta is None:
+        theta = torch.tensor([2.]).expand(n_batches)
+    else:
+        theta = torch.tensor([theta], dtype = torch.float).expand(n_batches)
     
     assert correction_method in ["fast", "original"]
 
     # Initialization
     objectives_harmony = []
 
-    for i in range(max_iter):
-        R = clustering(X_tensor, Z_norm, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, random_state)
-        Z_new = correction(X_tensor, R, Phi, ridge_lambda, correction_method)
+    for i in range(max_iter_harmony):
+        R = clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, random_state, sigma, max_iter_clustering)
+        Z_hat = correction(Z, R, Phi, ridge_lambda, correction_method)
         
         print("\tcompleted  {cur_iter} / {total_iter}  iterations".format(cur_iter = i + 1, total_iter = max_iter))
 
         if is_convergent_harmony(objectives_harmony, tol = tol_harmony):
             break
-        else:
-            Z = Z_new
 
     end = time.perf_counter()
     logger.info("Harmony integration is done. Time spent = {:.2f}s.".format(end - start))
 
-    return Z
+    return Z_hat
 
 
-def clustering(X, Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, random_state, n_init = 10, max_iter = 200, sigma = 0.1):
+def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, random_state, sigma, max_iter, n_init = 10):
     
     # Initialize cluster centroids
     n_cells = Z.shape[0]
+    Z_norm = normalize(Z, p = 2, dim = 1)
 
     kmeans = KMeans(n_clusters = n_clusters, init = 'k-means++', n_init = n_init, random_state = random_state, n_jobs = -1)
-    kmeans.fit(Z)
+    kmeans.fit(Z_norm)
     Y = torch.tensor(kmeans.cluster_centers_, dtype = torch.float)
 
     Y_norm = normalize(Y, p = 2, dim = 1)
-    Z_norm = normalize(Z, p = 2, dim = 1)
 
     # Initialize R
     dist_mat = 2 * (1 - torch.matmul(Z_norm, Y_norm.t()))
@@ -125,7 +126,7 @@ def clustering(X, Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, r
             pos += block_size
 
         # Compute Cluster Centroids
-        Y_new = torch.matmul(R.t(), X)
+        Y_new = torch.matmul(R.t(), Z)
         Y_new_norm = normalize(Y_new, p = 2, dim = 1)
 
         compute_objective(Y_new_norm, Z_norm, R, Phi, theta, sigma, O, E, objectives_clustering)
