@@ -12,21 +12,116 @@ Given an embedding of $N$ cell barcodes in $d$ dimensions, coming from $B$ batch
 * $\hat{Z} \in \mathbb{R}^{N \times d}$: Output embedding which is integrated.
 * $R \in [0, 1]^{N \times K}$: Soft cluster assignment matrix of cells (rows) to clusters (columns).
 * $\phi \in \{0, 1\}^{N \times B}$: One-hot assignment matrix of cells (rows) to batches (columns).
-* $Pr_b \in [0, 1]^B$: Frequency of batches.
+* $Pr \in [0, 1]^B$: Frequency of batches.
 * $O \in [0, 1]^{B \times K}$: The observed co-occurrence matrix of cells in batches (rows) and clusters (columns).
 * $E \in [0, 1]^{B \times K}$: The expected co-occurrence matrix of cells in batches (rows) and clusters (columns), under assumption of independence between cluster and batch assignment.
 * $Y \in [0, 1]^{K \times d}$: L2-Normalized cluster centroid locations.
 
 ## Objective Function
 
+* K-Means error: 
+
+$$
+e_1 = \sum_{i, k} R_{ik}||Z_i - Y_k||^2
+$$
+
+for $\forall 1 \leq i \leq N$ and $\forall 1 \leq k \leq K$.
+
+Moreover, if both $Z_i$ and $Y_k$ are L2-normalized, their euclidean distance is transformed as cosine distance:
+
+$$
+e_1 = \sum_{i, k} 2R_{ik}(1 - Z_{i} \cdot Y_{k}^T) = \sum_{i, k} 2R * (1 - Z Y^T)
+$$
+where $*$ is element-wise product.
+
+* Cross-entropy Error:
+
+$$
+e_2 = \sigma \sum_{i, k} R_{ik}\log{R_{ik}} = \sigma \sum_{i, k}R * \log{R}
+$$
+
+* Diversity Penalty:
+
+$$
+e_3 = \sigma \sum_{i, k} \theta R_{ik} \sum_{b}\phi_{ib}\log{\Big( \frac{O_{bk} + 1}{E_{bk} + 1} \Big)} = \sigma \sum_{i, k} R * \Big[ \phi \cdot \Big[ \Theta * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big] \Big],
+$$
+where $\Theta = [\theta, \theta, \dots, \theta]_{B \times K}$ and $\theta$ of shape $B \times 1$ are the discounting hyperparameters.
+
+Therefore, the objective function is
+
+$$
+E = e_1 + e_2 + e_3.
+$$
 
 ## Algorithm Structure
 
+```python
+def harmonize(Z, phi):
+    Z_hat = Z
+    while not converged:
+        R = clustering(Z_hat, phi)
+        Z_hat = correction(Z, R, phi)
+
+    return Z_hat
+```
+
 ## Clustering
+
+### Initialization
+
+* $Y = kmeans(\hat{Z}, K)$.
+
+* L2-normalize $Y$ and $\hat{Z}$ on rows.
+
+* Initialize $E$ and $O$:
+
+$$
+(E)_{bk} = Pr_b \cdot \sum_{i = 1}^N R_{ik} \qquad \Rightarrow \qquad E = Pr^T \cdot [R_{\cdot 1}, \dots, R_{\cdot K}];\\
+(O)_{bk} = \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad \Rightarrow \qquad O = \phi^T R.
+$$
+
+### Block-wise Update
+
+1. Compute $O$ and $E$ on left-out data:
+
+$$
+E = E - Pr^T \cdot [R_{in, 1}, \dots, R_{in, K}], \qquad O = O - \phi_{in}^T R_{in}.
+$$
+
+2. Update and normalize $R$:
+$$
+\begin{aligned}
+R_{in} &= \exp{\Big( -\frac{2(1 - \hat{Z}_{in}Y^T)}{\sigma} \Big)};\\
+\Omega &= \phi^{in} \Big( \frac{E+1}{O+1} \Big)^\Theta; \\
+R_{in} &= R_{in} \Omega; \\
+R_{in} &= \text{L1-Normalize}(R_{in}, \text{row}).
+\end{aligned}
+$$
+
+3. Compute $O$ and $E$ with full data:
+
+$$
+E = E + Pr^T \cdot [R_{in, 1}, \dots, R_{in, K}], \qquad O = O + \phi_{in}^T R_{in}.
+$$
+
+4. Compute cluster centroids:
+
+$$
+\begin{aligned}
+\hat{Y} &= \sum_{i = 1}^N R_{ik}Z_{id} = R^T Z;\\
+\hat{Y} &= \text{L2-Normalize}(\hat{Y}, \text{row}).
+\end{aligned}
+$$
+
+5. Compute objective value with updated $\hat{Y}$, $\hat{Z}$, $R$, $O$, and $E$.
 
 ## Correction
 
-Let
+### Original Method
+
+1. Initialize $\hat{Z}$ by $Z$.
+
+2. Let 
 
 $$ 
 
@@ -36,27 +131,28 @@ $$
 1 & \phi_{N1} & \cdots & \phi_{NB}
 \end{bmatrix}
 
-$$
+$$ 
 
-and
+3. Cluster-wise correction: 
 
-$$
-
-diag(R_k) = diag(R_{1k}, \dots, R_{Nk}).
+For each cluster $k$,
 
 $$
-
-### Original Method
-
+\begin{aligned}
+R_k &= [R_{1k}, \dots, R_{Nk}];\\
+\Phi_{R,k}^* &= \phi^{*T} \otimes R_k;\\
+W_k &= (\Phi_{R,k}^* \phi^* + \lambda I)^{-1} \Phi_{R,k}^* Z;\\
+W_k[0, :] &= \mathbf{0};\\
+\hat{Z} &= \hat{Z} - \Phi_{R,k}^{*T} W_k.
+\end{aligned}
 $$
 
-W_k = (\phi^{*T}diag(R_k)\phi^* + \lambda I)^{-1} \phi^{*T}R_kZ
+where $\otimes$ is multiplication of a matrix and a row vector.
 
-$$
 
 ### Improvement
 
-Consider $A_k = \phi^{*T}R_k\phi^* + \lambda I$,
+Let $A_k = \phi^{*T}diag(R_k)\phi^* + \lambda I$,
 
 $$
 \begin{aligned}
