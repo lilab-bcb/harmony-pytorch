@@ -58,6 +58,8 @@ def harmonize(
         R, Y = clustering(X_tensor, Z_norm, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, random_state)
         Z_new = correction(X_tensor, R, Phi, ridge_lambda, correction_method)
         
+        print("\tcompleted  {cur_iter} / {total_iter}  iterations".format(cur_iter = i + 1, total_iter = max_iter))
+
         if is_convergent_harmony(objectives_harmony, tol = tol_harmony):
             break
         else:
@@ -137,10 +139,10 @@ def clustering(X, Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, r
     return R, Y_norm
 
 def correction(X, R, Phi, ridge_lambda, correction_method):
-    if correction_method == 'original':
-        return correction_original(X, R, Phi, ridge_lambda)
-    else:
+    if correction_method == 'fast':
         return correction_fast(X, R, Phi, ridge_lambda)
+    else:
+        return correction_original(X, R, Phi, ridge_lambda)
 
 
 def correction_original(X, R, Phi, ridge_lambda):
@@ -159,9 +161,36 @@ def correction_original(X, R, Phi, ridge_lambda):
 
     return Z
 
-# TODO
+
 def correction_fast(X, R, Phi, ridge_lambda):
-    return None
+    n_cells = X.shape[0]
+    n_clusters = R.shape[1]
+    n_batches = Phi.shape[1]
+    Phi_1 = torch.cat((torch.ones(n_cells, 1), Phi), dim = 1)
+
+    N = torch.matmul(Phi.t(), R)
+
+    Z = X.clone()
+    P = torch.eye(n_batches + 1, n_batches + 1)
+    for k in range(n_clusters):
+        N_k = torch.sum(R[:,k])
+
+        factor = 1 / (N[:, k] + ridge_lambda)
+        c = N_k + ridge_lambda + torch.sum(-factor * N[:, k]**2)
+        
+        P[0, 1:] = -factor * N[:, k]
+        B = torch.cat((torch.tensor([[c]]), factor.view(1, -1)), dim = 1)
+        inv_mat = torch.matmul(P.t() * B.view(1, -1), P)
+
+        Phi_t_diag_R = Phi_1.t() * R[:,k].view(1, -1)
+        W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
+        W[0, :] = 0
+
+        Z -= torch.matmul(Phi_t_diag_R.t(), W)
+
+    return Z
+
+
 
 def compute_objective(Y_norm, Z_norm, R, Phi, theta, sigma, O, E, objective_arr):
     kmeans_error = torch.sum(R * 2 * (1 - torch.matmul(Z_norm, Y_norm.t())))
