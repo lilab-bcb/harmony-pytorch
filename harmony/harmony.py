@@ -88,11 +88,11 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
     # Initialize R
     dist_mat = 2 * (1 - torch.matmul(Z_norm, Y_norm.t()))
     R = -dist_mat / sigma
-    R = torch.add(R, -torch.max(R, dim = 1).values.view(-1, 1))
+    R = torch.add(R, -torch.max(R, dim = 1, keepdim = True).values)
     R = torch.exp(R)
-    R = torch.div(R, torch.sum(R, dim = 1).view(-1, 1))
+    R = torch.div(R, torch.sum(R, dim = 1, keepdim = True))
 
-    E = torch.matmul(Pr_b.view(-1, 1), torch.sum(R, dim = 0).view(1, -1))
+    E = torch.matmul(Pr_b.view(-1, 1), torch.sum(R, dim = 0, keepdim = True))
     O = torch.matmul(Phi.t(), R)
 
     # Compute initialized objective.
@@ -113,7 +113,7 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
     
             # Compute O and E on left out data.
             O -= torch.matmul(Phi_in.t(), R_in)
-            E -= torch.matmul(Pr_b.view(-1, 1), torch.sum(R_in, dim = 0).view(1, -1))
+            E -= torch.matmul(Pr_b.view(-1, 1), torch.sum(R_in, dim = 0, keepdim = True))
     
             # Update and Normalize R
             R_in = torch.exp(- 2 / sigma * (1 - torch.matmul(Z[idx_in,], Y_norm.t())))
@@ -124,7 +124,7 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
     
             # Compute O and E with full data.
             O += torch.matmul(Phi_in.t(), R_in)
-            E += torch.matmul(Pr_b.view(-1, 1), torch.sum(R_in, dim = 0).view(1, -1))
+            E += torch.matmul(Pr_b.view(-1, 1), torch.sum(R_in, dim = 0, keepdim = True))
     
             pos += block_size
 
