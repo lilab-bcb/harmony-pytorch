@@ -43,9 +43,13 @@ $$
 * Diversity Penalty:
 
 $$
-e_3 = \sigma \sum_{i, k} \theta R_{ik} \sum_{b}\phi_{ib}\log{\Big( \frac{O_{bk} + 1}{E_{bk} + 1} \Big)} = \sigma \sum_{i, k} R * \Big[ \phi \cdot \Big[ \Theta * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big] \Big],
+\begin{aligned}
+e_3 &= \sigma \sum_{i, k} \theta R_{ik} \sum_{b}\phi_{ib}\log{\Big( \frac{O_{bk} + 1}{E_{bk} + 1} \Big)} \\ 
+    &= \sigma \sum_{b, k} \theta \Big[ (\phi^T R) * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big] \\
+    &= \sigma \sum_{i, k} \theta \Big[ O * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big]
+\end{aligned}
 $$
-where $\Theta = [\theta, \theta, \dots, \theta]_{B \times K}$ and $\theta$ of shape $B \times 1$ are the discounting hyperparameters.
+where $\theta$ of shape $1 \times B$ are the discounting hyperparameters.
 
 Therefore, the objective function is
 
