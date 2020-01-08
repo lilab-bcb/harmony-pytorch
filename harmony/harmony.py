@@ -55,8 +55,11 @@ def harmonize(
     # Initialization
     objectives_harmony = []
 
+    np.random.seed(random_state)
+    rand_arr = np.random.randint(0, size = max_iter_harmony)
+
     for i in range(max_iter_harmony):
-        R = clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, random_state, sigma, max_iter_clustering)
+        R = clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, rand_arr[i], sigma, max_iter_clustering)
         Z_hat = correction(Z, R, Phi, ridge_lambda, correction_method)
         
         print("\tcompleted  {cur_iter} / {total_iter}  iterations".format(cur_iter = i + 1, total_iter = max_iter))
@@ -95,6 +98,8 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
     # Compute initialized objective.
     objectives_clustering = []
     compute_objective(Y_norm, Z_norm, R, Phi, theta, sigma, O, E, objectives_clustering)
+
+    np.random.seed(random_state)
 
     for i in range(max_iter):
         idx_list = np.arange(n_cells)
