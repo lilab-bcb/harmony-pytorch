@@ -76,8 +76,10 @@ def harmonize(Z, phi):
 * Initialize $E$ and $O$:
 
 $$
-(E)_{bk} = Pr_b \cdot \sum_{i = 1}^N R_{ik} \qquad \Rightarrow \qquad E = Pr^T \cdot [R_{\cdot 1}, \dots, R_{\cdot K}];\\
-(O)_{bk} = \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad \Rightarrow \qquad O = \phi^T R.
+\begin{aligned}
+(E)_{bk} = Pr_b \cdot \sum_{i = 1}^N R_{ik} \qquad &\Rightarrow \qquad E = Pr^T \cdot [R_{\cdot 1}, \dots, R_{\cdot K}];\\
+(O)_{bk} = \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad &\Rightarrow \qquad O = \phi^T R.
+\end{aligned}
 $$
 
 ### Block-wise Update
@@ -124,13 +126,11 @@ $$
 2. Let 
 
 $$ 
-
 \phi^* = \begin{bmatrix} 
 1 & \phi_{11} & \cdots & \phi_{1B} \\
 \vdots & \vdots & \ddots & \vdots \\
 1 & \phi_{N1} & \cdots & \phi_{NB}
 \end{bmatrix}
-
 $$ 
 
 3. Cluster-wise correction: 
@@ -219,6 +219,7 @@ P = \begin{bmatrix}
  & & & 1
 \end{bmatrix}
 $$
+
 then
 $$
 B = PAP^T = \begin{bmatrix}
