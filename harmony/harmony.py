@@ -120,8 +120,8 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
     
             # Update and Normalize R
             R_in = torch.exp(- 2 / sigma * (1 - torch.matmul(Z[idx_in,], Y_norm.t())))
-            omega = torch.matmul(Phi_in, torch.pow(torch.div(E + 1, O + 1), theta.view(-1, 1).expand_as(E)))
-            R_in = torch.mul(R_in, omega)
+            omega = torch.matmul(Phi_in, torch.pow(torch.div(E + 1, O + 1), theta.view(-1, 1)))
+            R_in = R_in * omega
             R_in = normalize(R_in, p = 1, dim = 1)
             R[idx_in,] = R_in
     
