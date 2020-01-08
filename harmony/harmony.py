@@ -59,13 +59,13 @@ def harmonize(
     objectives_harmony = []
 
     np.random.seed(random_state)
-    rand_arr = np.random.randint(0, size = max_iter_harmony)
+    rand_arr = np.random.randint(np.iinfo(np.int32).max, size = max_iter_harmony)
 
     for i in range(max_iter_harmony):
         R = clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, rand_arr[i], sigma, max_iter_clustering, block_proportion)
         Z_hat = correction(Z, R, Phi, ridge_lambda, correction_method)
         
-        print("\tcompleted  {cur_iter} / {total_iter}  iterations".format(cur_iter = i + 1, total_iter = max_iter))
+        print("\tcompleted  {cur_iter} / {total_iter}  iterations".format(cur_iter = i + 1, total_iter = max_iter_harmony))
 
         if is_convergent_harmony(objectives_harmony, tol = tol_harmony):
             break
