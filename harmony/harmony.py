@@ -15,7 +15,7 @@ def harmonize(
     X: np.array,
     batch_mat: DataFrame,
     n_clusters: int = None,
-    theta: float = None,
+    theta: float = 2.0,
     tau: int = 0,
     max_iter_harmony: int = 10,
     max_iter_clustering: int = 200,
@@ -43,9 +43,6 @@ def harmonize(
         n_clusters = int(min(100, n_cells / 30))
 
     R = torch.zeros(n_cells, n_clusters, dtype = torch.float)
-
-    if theta is None:
-        theta = 2.0
 
     theta = torch.tensor([theta], dtype = torch.float).expand(n_batches)
 
