@@ -9,9 +9,6 @@ from torch.nn.functional import normalize
 from typing import Union, List
 from .utils import one_hot_tensor, get_batch_codes
 
-import logging
-
-logger = logging.getLogger("harmony")
 
 
 def harmonize(
@@ -93,8 +90,6 @@ def harmonize(
     >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
-    start = time.perf_counter()
-
     Z = torch.tensor(X, dtype=torch.float)
     Z_norm = normalize(Z, p=2, dim=1)
     n_cells = Z.shape[0]
@@ -116,7 +111,7 @@ def harmonize(
 
     theta = theta.view(1, -1)
 
-    assert block_proportion >= 0 and block_proportion <= 1
+    assert block_proportion > 0 and block_proportion <= 1
     assert correction_method in ["fast", "original"]
 
     # Initialization
@@ -159,11 +154,6 @@ def harmonize(
         if is_convergent_harmony(objectives_harmony, tol=tol_harmony):
             print("\tReach convergence after {} iteration(s).".format(i + 1))
             break
-
-    end = time.perf_counter()
-    logger.info(
-        "Harmony integration is done. Time spent = {:.2f}s.".format(end - start)
-    )
 
     return Z_hat.numpy()
 
