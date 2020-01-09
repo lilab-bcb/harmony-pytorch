@@ -146,35 +146,10 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
     return R
 
 def correction(X, R, Phi, ridge_lambda, correction_method):
-    n_cells = X.shape[0]
-    n_clusters = R.shape[1]
-    n_batches = Phi.shape[1]
-    Phi_1 = torch.cat((torch.ones(n_cells, 1), Phi), dim = 1)
-
-    Z = X.clone()
-    N = torch.matmul(Phi.t(), R)
-    P = torch.eye(n_batches + 1, n_batches + 1)
-    for k in range(n_clusters):
-        Phi_t_diag_R = Phi_1.t() * R[:, k].view(1, -1)
-        inv_mat_1 = torch.inverse(torch.matmul(Phi_t_diag_R, Phi_1) + ridge_lambda * torch.eye(n_batches + 1, n_batches + 1))
-
-        N_k = torch.sum(R[:,k])
-        factor = 1 / (N[:, k] + ridge_lambda)
-        c = N_k + ridge_lambda + torch.sum(-factor * N[:, k]**2)
-        P[0, 1:] = -factor * N[:, k]
-        B = torch.cat((torch.tensor([[c]]), factor.view(1, -1)), dim = 1)
-        inv_mat_2 = torch.matmul(P.t() * B.view(1, -1), P)
-
-        if k == 0:
-            print("================")
-            print(inv_mat_1)
-            print(inv_mat_2)
-
-        inv_mat = inv_mat_1 if correction_method == 'original' else inv_mat_2
-
-        W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
-        W[0, :] = 0
-        Z -= torch.matmul(Phi_t_diag_R.t(), W)
+    if correction_method == 'fast':
+        return correction_fast(X, R, Phi, ridge_lambda)
+    else:
+        return correction_original(X, R, Phi, ridge_lambda)
 
 
 def correction_original(X, R, Phi, ridge_lambda):
@@ -211,8 +186,8 @@ def correction_fast(X, R, Phi, ridge_lambda):
         c = N_k + ridge_lambda + torch.sum(-factor * N[:, k]**2)
         
         P[0, 1:] = -factor * N[:, k]
-        B = torch.cat((torch.tensor([[c]]), factor.view(1, -1)), dim = 1)
-        inv_mat = torch.matmul(P.t() * B.view(1, -1), P)
+        B_inv = torch.cat((torch.tensor([[1/c]]), factor.view(1, -1)), dim = 1)
+        inv_mat = torch.matmul(P.t() * B_inv.view(1, -1), P)
 
         Phi_t_diag_R = Phi_1.t() * R[:,k].view(1, -1)
         W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
@@ -221,7 +196,6 @@ def correction_fast(X, R, Phi, ridge_lambda):
         Z -= torch.matmul(Phi_t_diag_R.t(), W)
 
     return Z
-
 
 
 def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr):
