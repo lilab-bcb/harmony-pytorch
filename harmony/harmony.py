@@ -209,13 +209,11 @@ def clustering(
     n_init=10,
 ):
 
-    # Initialize cluster centroids
     n_cells = Z_norm.shape[0]
 
     Y = torch.matmul(R.t(), Z_norm)
     Y_norm = normalize(Y, p=2, dim=1)
 
-    # Compute initialized objective.
     objectives_clustering = []
     compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering)
 
