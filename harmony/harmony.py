@@ -40,8 +40,11 @@ def harmonize(
     X: ``numpy.array``
         The input embedding with rows for cells (N) and columns for embedding coordinates (d).
 
-    batch_mat: ``pandas.DataFrame`` or ``pandas.Series``
-        The batch information of cells with rows for cells (N) and columns for batch factors.
+    batch_mat: ``pandas.DataFrame``
+        The cell barcode information as data frame, with rows for cells (N) and columns for cell attributes.
+
+    batch_key: ``str`` or ``List[str]``
+        Cell attribute(s) from ``batch_mat`` to identify batches.
 
     n_clusters: ``int``, optional, default: ``None``
         Number of clusters used in Harmony algorithm. If ``None``, choose the minimum of 100 and N / 30.
@@ -84,7 +87,10 @@ def harmonize(
     Examples
     --------
     >>> adata = anndata.read_h5ad("filename.h5ad")
-    >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs['Channel'])
+    >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, 'Channel')
+
+    >>> adata = anndata.read_h5ad("filename.h5ad")
+    >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
     start = time.perf_counter()
