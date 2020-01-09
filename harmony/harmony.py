@@ -6,8 +6,8 @@ import pandas as pd
 
 from sklearn.cluster import KMeans
 from torch.nn.functional import normalize
-from typing import Union
-from .utils import one_hot_tensor
+from typing import Union, List
+from .utils import one_hot_tensor, get_batch_codes
 
 import logging
 
@@ -16,7 +16,8 @@ logger = logging.getLogger("harmony")
 
 def harmonize(
     X: np.array,
-    batch_mat: Union[pd.DataFrame, pd.Series],
+    batch_mat: pd.DataFrame,
+    batch_key: Union[str, List[str]],
     n_clusters: int = None,
     max_iter_harmony: int = 10,
     max_iter_clustering: int = 200,
@@ -92,7 +93,7 @@ def harmonize(
     Z_norm = normalize(Z, p=2, dim=1)
     n_cells = Z.shape[0]
 
-    batch_codes = get_batch_codes(batch_mat)
+    batch_codes = get_batch_codes(batch_mat, batch_key)
     n_batches = batch_codes.nunique()
     N_b = torch.tensor(batch_codes.value_counts(sort=False).values, dtype=torch.float)
     Pr_b = N_b.view(-1, 1) / n_cells
@@ -159,10 +160,6 @@ def harmonize(
     )
 
     return Z_hat.numpy()
-
-
-def get_batch_codes(batch_mat):
-    return batch_mat.astype("category").cat.codes.astype("category")
 
 
 def initialize_centroids(
