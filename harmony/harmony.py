@@ -15,8 +15,6 @@ def harmonize(
     X: np.array,
     batch_mat: DataFrame,
     n_clusters: int = None,
-    theta: float = 2.0,
-    tau: int = 0,
     max_iter_harmony: int = 10,
     max_iter_clustering: int = 200,
     tol_harmony: float = 1e-4,
@@ -24,6 +22,8 @@ def harmonize(
     ridge_lambda: float = 1.0,
     sigma: float = 0.1,
     block_proportion: float = 0.05,
+    theta: float = 2.0,
+    tau: int = 0,
     correction_method: str = "fast",
     random_state: int = 0,
 ) -> torch.Tensor:
@@ -31,9 +31,10 @@ def harmonize(
     start = time.perf_counter()
 
     Z = torch.tensor(X, dtype = torch.float)
+    Z_norm = normalize(Z, p = 2, dim = 1)
     n_cells = Z.shape[0]
 
-    batch_codes = batch_mat.astype('category').cat.codes.astype('category')
+    batch_codes = get_batch_codes(batch_mat)
     n_batches = batch_codes.nunique()
     N_b = torch.tensor(batch_codes.value_counts(sort = False).values, dtype = torch.float)
     Pr_b = N_b.view(-1, 1) / n_cells
@@ -42,8 +43,6 @@ def harmonize(
 
     if n_clusters is None:
         n_clusters = int(min(100, n_cells / 30))
-
-    R = torch.zeros(n_cells, n_clusters, dtype = torch.float)
 
     theta = torch.tensor([theta], dtype = torch.float).expand(n_batches)
 
@@ -56,18 +55,21 @@ def harmonize(
     assert correction_method in ["fast", "original"]
 
     # Initialization
-    objectives_harmony = []
+    R, E, O, objectives_harmony = initialize_centroids(Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state)
 
     np.random.seed(random_state)
     rand_arr = np.random.randint(np.iinfo(np.int32).max, size = max_iter_harmony)
 
     for i in range(max_iter_harmony):
-        R = clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol_clustering, objectives_harmony, rand_arr[i], sigma, max_iter_clustering, block_proportion)
+        start_iter = time.perf_counter()
+        R = clustering(Z_norm, Pr_b, Phi, R, E, O, n_clusters, theta, tol_clustering, objectives_harmony, rand_arr[i], max_iter_clustering, sigma, block_proportion)
         Z_hat = correction(Z, R, Phi, ridge_lambda, correction_method)
+        end_iter = time.perf_counter()
         
-        print("\tcompleted  {cur_iter} / {total_iter}  iterations".format(cur_iter = i + 1, total_iter = max_iter_harmony))
+        print("\tCompleted {cur_iter} / {total_iter} in {duration:.2f}s.".format(cur_iter = i + 1, total_iter = max_iter_harmony, duration = end_iter - start_iter))
 
         if is_convergent_harmony(objectives_harmony, tol = tol_harmony):
+            print("\tReach convergence after {} iteration(s).".format(i + 1))
             break
 
     end = time.perf_counter()
@@ -75,17 +77,17 @@ def harmonize(
 
     return Z_hat
 
+def get_batch_codes(batch_mat):
+    return batch_mat.astype('category').cat.codes.astype('category')
 
-def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, random_state, sigma, max_iter, block_proportion, n_init = 10):
-    
-    # Initialize cluster centroids
-    n_cells = Z.shape[0]
-    Z_norm = normalize(Z, p = 2, dim = 1)
+
+def initialize_centroids(Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, n_init = 10):
+    n_cells = Z_norm.shape[0]
 
     kmeans = KMeans(n_clusters = n_clusters, init = 'k-means++', n_init = n_init, random_state = random_state, n_jobs = -1)
     kmeans.fit(Z_norm)
-    Y = torch.tensor(kmeans.cluster_centers_, dtype = torch.float)
 
+    Y = torch.tensor(kmeans.cluster_centers_, dtype = torch.float)
     Y_norm = normalize(Y, p = 2, dim = 1)
 
     # Initialize R
@@ -97,6 +99,21 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
 
     E = torch.matmul(Pr_b, torch.sum(R, dim = 0, keepdim = True))
     O = torch.matmul(Phi.t(), R)
+
+    objectives_harmony = []
+    compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_harmony)
+
+    return R, E, O, objectives_harmony
+
+
+
+def clustering(Z_norm, Pr_b, Phi, R, E, O, n_clusters, theta, tol, objectives_harmony, random_state, max_iter, sigma, block_proportion, n_init = 10):
+    
+    # Initialize cluster centroids
+    n_cells = Z_norm.shape[0]
+
+    Y = torch.matmul(R.t(), Z_norm)
+    Y_norm = normalize(Y, p = 2, dim = 1)
 
     # Compute initialized objective.
     objectives_clustering = []
@@ -119,8 +136,8 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
             E -= torch.matmul(Pr_b, torch.sum(R_in, dim = 0, keepdim = True))
     
             # Update and Normalize R
-            R_in = torch.exp(- 2 / sigma * (1 - torch.matmul(Z[idx_in,], Y_norm.t())))
-            omega = torch.matmul(Phi_in, torch.pow(torch.div(E + 1, O + 1), theta.view(-1, 1)))
+            R_in = torch.exp(- 2 / sigma * (1 - torch.matmul(Z_norm[idx_in,], Y_norm.t())))
+            omega = torch.matmul(Phi_in, torch.pow(torch.div(E + 1, O + 1), theta.t()))
             R_in = R_in * omega
             R_in = normalize(R_in, p = 1, dim = 1)
             R[idx_in,] = R_in
@@ -132,24 +149,54 @@ def clustering(Z, Pr_b, Phi, R, n_clusters, theta, tol, objectives_harmony, rand
             pos += block_size
 
         # Compute Cluster Centroids
-        Y_new = torch.matmul(R.t(), Z)
-        Y_new_norm = normalize(Y_new, p = 2, dim = 1)
+        Y = torch.matmul(R.t(), Z_norm)
+        Y_norm = normalize(Y, p = 2, dim = 1)
 
-        compute_objective(Y_new_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering)
+        compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering)
 
         if is_convergent_clustering(objectives_clustering, tol):
             objectives_harmony.append(objectives_clustering[-1])
             break
-        else:
-            Y_norm = Y_new_norm
 
     return R
+
 
 def correction(X, R, Phi, ridge_lambda, correction_method):
     if correction_method == 'fast':
         return correction_fast(X, R, Phi, ridge_lambda)
     else:
         return correction_original(X, R, Phi, ridge_lambda)
+
+#def correction(X, R, Phi, ridge_lambda, correction_method):
+#    n_cells = X.shape[0]
+#    n_clusters = R.shape[1]
+#    n_batches = Phi.shape[1]
+#    Phi_1 = torch.cat((torch.ones(n_cells, 1), Phi), dim = 1)
+#
+#    Z = X.clone()
+#    N = torch.matmul(Phi.t(), R)
+#    P = torch.eye(n_batches + 1, n_batches + 1)
+#    for k in range(n_clusters):
+#        Phi_t_diag_R = Phi_1.t() * R[:, k].view(1, -1)
+#        inv_mat_1 = torch.inverse(torch.matmul(Phi_t_diag_R, Phi_1) + ridge_lambda * torch.eye(n_batches + 1, n_batches + 1))
+#
+#        N_k = torch.sum(R[:,k])
+#        factor = 1 / (N[:, k] + ridge_lambda)
+#        c = N_k + ridge_lambda + torch.sum(-factor * N[:, k]**2)
+#        P[0, 1:] = -factor * N[:, k]
+#        B = torch.cat((torch.tensor([[1/c]]), factor.view(1, -1)), dim = 1)
+#        inv_mat_2 = torch.matmul(P.t() * B.view(1, -1), P)
+#
+#        if k == 0:
+#            print("================")
+#            print(inv_mat_1)
+#            print(inv_mat_2)
+#
+#        inv_mat = inv_mat_1 if correction_method == 'original' else inv_mat_2
+#
+#        W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
+#        W[0, :] = 0
+#        Z -= torch.matmul(Phi_t_diag_R.t(), W)
 
 
 def correction_original(X, R, Phi, ridge_lambda):
