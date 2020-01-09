@@ -62,6 +62,7 @@ $$
 ```python
 def harmonize(Z, phi):
     Z_hat = Z
+    R, E, O = initialize_centroids(Z_hat)
     while not converged:
         R = clustering(Z_hat, phi)
         Z_hat = correction(Z, R, phi)
@@ -69,15 +70,21 @@ def harmonize(Z, phi):
     return Z_hat
 ```
 
-## Clustering
+## Centroids Initialization
 
-### Initialization
+1. L2-normalize $\hat{Z}$ on rows.
 
-* $Y = kmeans(\hat{Z}, K)$.
+2. $\hat{Y} = kmeans(\hat{Z}, K)$. And then L2-normalize $\hat{Y}$ on rows.
 
-* L2-normalize $Y$ and $\hat{Z}$ on rows.
+3. Initialize $R$:
 
-* Initialize $E$ and $O$:
+$$
+R = \exp{\Big(-\frac{2(1 - \hat{Z} \hat{Y}^T)}{\sigma}\Big)}
+$$ 
+
+Then L1-normalize $R$ on rows, so that each row sums up to 1.
+
+4. Initialize $E$ and $O$:
 
 $$
 \begin{aligned}
@@ -85,6 +92,10 @@ $$
 (O)_{bk} = \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad &\Rightarrow \qquad O = \phi^T R.
 \end{aligned}
 $$
+
+5. Compute objective value with $\hat{Y}$, $\hat{Z}$, $R$, $O$, and $E$.
+
+## Clustering
 
 ### Block-wise Update
 
@@ -97,12 +108,14 @@ $$
 2. Update and normalize $R$:
 $$
 \begin{aligned}
-R_{in} &= \exp{\Big( -\frac{2(1 - \hat{Z}_{in}Y^T)}{\sigma} \Big)};\\
+R_{in} &= \exp{\Big( -\frac{2(1 - \hat{Z}_{in}\hat{Y}^T)}{\sigma} \Big)};\\
 \Omega &= \phi^{in} \Big( \frac{E+1}{O+1} \Big)^\Theta; \\
 R_{in} &= R_{in} \Omega; \\
 R_{in} &= \text{L1-Normalize}(R_{in}, \text{row}).
 \end{aligned}
 $$
+
+where $\Theta = [\theta^T, \dots, \theta^T]$ of shape $B \times K$.
 
 3. Compute $O$ and $E$ with full data:
 
@@ -110,11 +123,11 @@ $$
 E = E + Pr^T \cdot [R_{in, 1}, \dots, R_{in, K}], \qquad O = O + \phi_{in}^T R_{in}.
 $$
 
-4. Compute cluster centroids:
+4. Update cluster centroids:
 
 $$
 \begin{aligned}
-\hat{Y} &= \sum_{i = 1}^N R_{ik}Z_{id} = R^T Z;\\
+\hat{Y} &= \sum_{i = 1}^N R_{ik}\hat{Z}_{id} = R^T \hat{Z};\\
 \hat{Y} &= \text{L2-Normalize}(\hat{Y}, \text{row}).
 \end{aligned}
 $$
@@ -250,7 +263,15 @@ $$
 
 Therefore,
 $$
-A^{-1} = P^TB^{-1}P,
+\begin{aligned}
+A^{-1} &= P^TB^{-1}P \\
+&= \begin{bmatrix}
+c^{-1} & & & \\
+-\frac{N_{1k}}{N_{1k}+\lambda}c^{-1} & \frac{1}{N_{1k}+\lambda} & & \\
+\vdots & & \ddots & \\
+-\frac{N_{Bk}}{N_{Bk}+\lambda}c^{-1} & & & \frac{1}{N_{Bk}+\lambda}
+\end{bmatrix} \cdot P
+\end{aligned}
 $$
 which is decomposited into a lower-triangular, a diagonal, and an upper-triangular matrix.
 
