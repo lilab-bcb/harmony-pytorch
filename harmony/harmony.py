@@ -184,10 +184,13 @@ def correction_fast(X, R, Phi, ridge_lambda):
 
         factor = 1 / (N[:, k] + ridge_lambda)
         c = N_k + ridge_lambda + torch.sum(-factor * N[:, k]**2)
+        c_inv = 1 / c
         
         P[0, 1:] = -factor * N[:, k]
-        B_inv = torch.cat((torch.tensor([[1/c]]), factor.view(1, -1)), dim = 1)
-        inv_mat = torch.matmul(P.t() * B_inv.view(1, -1), P)
+
+        P_t_B_inv = torch.diag(torch.cat((torch.tensor([[c_inv]]), factor.view(1, -1)), dim = 1).squeeze())
+        P_t_B_inv[1:, 0] = P[0, 1:] * c_inv
+        inv_mat = torch.matmul(P_t_B_inv, P)
 
         Phi_t_diag_R = Phi_1.t() * R[:,k].view(1, -1)
         W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
