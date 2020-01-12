@@ -124,7 +124,7 @@ def harmonize(
 
     for i in range(max_iter_harmony):
         start_iter = time.perf_counter()
-        R = clustering(
+        R, O = clustering(
             Z_norm,
             Pr_b,
             Phi,
@@ -140,7 +140,7 @@ def harmonize(
             sigma,
             block_proportion,
         )
-        Z_hat = correction(Z, R, Phi, ridge_lambda, correction_method)
+        Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method)
         end_iter = time.perf_counter()
 
         print(
@@ -262,12 +262,12 @@ def clustering(
             objectives_harmony.append(objectives_clustering[-1])
             break
 
-    return R
+    return R, O
 
 
-def correction(X, R, Phi, ridge_lambda, correction_method):
+def correction(X, R, Phi, O, ridge_lambda, correction_method):
     if correction_method == "fast":
-        return correction_fast(X, R, Phi, ridge_lambda)
+        return correction_fast(X, R, Phi, O, ridge_lambda)
     else:
         return correction_original(X, R, Phi, ridge_lambda)
 
@@ -324,24 +324,23 @@ def correction_original(X, R, Phi, ridge_lambda):
     return Z
 
 
-def correction_fast(X, R, Phi, ridge_lambda):
+def correction_fast(X, R, Phi, O, ridge_lambda):
     n_cells = X.shape[0]
     n_clusters = R.shape[1]
     n_batches = Phi.shape[1]
     Phi_1 = torch.cat((torch.ones(n_cells, 1), Phi), dim=1)
 
-    N = torch.matmul(Phi.t(), R)
-
     Z = X.clone()
     P = torch.eye(n_batches + 1, n_batches + 1)
     for k in range(n_clusters):
-        N_k = torch.sum(R[:, k])
+        O_k = O[:, k]
+        N_k = torch.sum(O_k)
 
-        factor = 1 / (N[:, k] + ridge_lambda)
-        c = N_k + ridge_lambda + torch.sum(-factor * N[:, k] ** 2)
+        factor = 1 / (O_k + ridge_lambda)
+        c = N_k + ridge_lambda + torch.sum(-factor * O_k ** 2)
         c_inv = 1 / c
 
-        P[0, 1:] = -factor * N[:, k]
+        P[0, 1:] = -factor * O_k
 
         P_t_B_inv = torch.diag(
             torch.cat((torch.tensor([[c_inv]]), factor.view(1, -1)), dim=1).squeeze()
