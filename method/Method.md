@@ -207,30 +207,30 @@ Let
 $$
 \begin{aligned}
 N_k &= \sum_{i = 1}^N R_{ik},\\
-N_{bk} &= \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad \Rightarrow \qquad N = \phi^T R.
+N_{bk} &= \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad \Rightarrow \qquad N = \phi^T R \qquad \Rightarrow \qquad N = O.
 \end{aligned}
 $$
 
-Then we have $N_k = \sum_{b = 1}^B N_{bk}$, and
+Then we have $N_k = \sum_{b = 1}^B O_{bk}$, and
 
 $$
 A_k = \begin{bmatrix}
-N_k & N_{1k} & \cdots & N_{Bk} \\
-N_{1k} & N_{1k} & & \\
+N_k & O_{1k} & \cdots & O_{Bk} \\
+O_{1k} & O_{1k} & & \\
 \vdots & & \ddots & \\
-N_{Bk} & & & N_{Bk}
+O_{Bk} & & & O_{Bk}
 \end{bmatrix} + \lambda I = \begin{bmatrix}
-N_k + \lambda & N_{1k} & \cdots & N_{Bk} \\
-N_{1k} & N_{1k} + \lambda & & \\
+N_k + \lambda & O_{1k} & \cdots & O_{Bk} \\
+O_{1k} & O_{1k} + \lambda & & \\
 \vdots & & \ddots & \\
-N_{Bk} & & & N_{Bk} + \lambda
+O_{Bk} & & & O_{Bk} + \lambda
 \end{bmatrix}.
 $$
 
 Let 
 $$
 P = \begin{bmatrix}
-1 & -\frac{N_{1k}}{N_{1k} + \lambda} & \cdots & -\frac{N_{Bk}}{N_{Bk} + \lambda} \\
+1 & -\frac{O_{1k}}{O_{1k} + \lambda} & \cdots & -\frac{O_{Bk}}{O_{Bk} + \lambda} \\
  & 1 &  &  \\
  & & \ddots & \\
  & & & 1
@@ -241,23 +241,23 @@ then
 $$
 B = PAP^T = \begin{bmatrix}
 c & & & \\
-  & N_{1k}+\lambda & & \\
+  & O_{1k}+\lambda & & \\
   & & \ddots & \\
-  & & & N_{Bk}+\lambda
+  & & & O_{Bk}+\lambda
 \end{bmatrix},
 $$
 where 
 $$
-c = N_k + \lambda - \sum_{i = 1}^N \frac{N_{ik}^2}{N_{ik}+\lambda}.
+c = N_k + \lambda - \sum_{i = 1}^N \frac{O_{ik}^2}{O_{ik}+\lambda}.
 $$
 
 $B$ has inverse
 $$
 B^{-1} = \begin{bmatrix}
 c^{-1} & & & \\
- & \frac{1}{N_{1k}+\lambda} & & \\
+ & \frac{1}{O_{1k}+\lambda} & & \\
  & & \ddots & \\
- & & & \frac{1}{N_{Bk}+\lambda}
+ & & & \frac{1}{O_{Bk}+\lambda}
 \end{bmatrix}.
 $$
 
@@ -267,9 +267,9 @@ $$
 A^{-1} &= P^TB^{-1}P \\
 &= \begin{bmatrix}
 c^{-1} & & & \\
--\frac{N_{1k}}{N_{1k}+\lambda}c^{-1} & \frac{1}{N_{1k}+\lambda} & & \\
+-\frac{O_{1k}}{O_{1k}+\lambda}c^{-1} & \frac{1}{O_{1k}+\lambda} & & \\
 \vdots & & \ddots & \\
--\frac{N_{Bk}}{N_{Bk}+\lambda}c^{-1} & & & \frac{1}{N_{Bk}+\lambda}
+-\frac{O_{Bk}}{O_{Bk}+\lambda}c^{-1} & & & \frac{1}{O_{Bk}+\lambda}
 \end{bmatrix} \cdot P
 \end{aligned}
 $$
