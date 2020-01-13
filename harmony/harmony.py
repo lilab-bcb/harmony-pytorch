@@ -27,6 +27,7 @@ def harmonize(
     tau: int = 0,
     correction_method: str = "fast",
     random_state: int = 0,
+    use_gpu: bool = False,
 ) -> np.array:
     """
     Integrate data using Harmony algorithm.
@@ -76,6 +77,9 @@ def harmonize(
     random_state: ``int``, optional, default: ``0``
         Random seed for reproducing results.
 
+    use_gpu: ``bool``, optional, default: ``False``
+        If ``True``, use GPU if available. Otherwise, use CPU only.
+
     Returns
     -------
     ``numpy.array``
@@ -90,21 +94,23 @@ def harmonize(
     >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
-    Z = torch.tensor(X, dtype=torch.float)
+    dev_id = 'cuda' if torch.cuda.is_available() and use_gpu else 'cpu'
+    
+    Z = torch.tensor(X, dtype=torch.float, device = dev_id)
     Z_norm = normalize(Z, p=2, dim=1)
     n_cells = Z.shape[0]
 
     batch_codes = get_batch_codes(batch_mat, batch_key)
     n_batches = batch_codes.nunique()
-    N_b = torch.tensor(batch_codes.value_counts(sort=False).values, dtype=torch.float)
+    N_b = torch.tensor(batch_codes.value_counts(sort=False).values, dtype=torch.float, device = dev_id)
     Pr_b = N_b.view(-1, 1) / n_cells
 
-    Phi = one_hot_tensor(batch_codes)
+    Phi = one_hot_tensor(batch_codes, use_gpu)
 
     if n_clusters is None:
         n_clusters = int(min(100, n_cells / 30))
 
-    theta = torch.tensor([theta], dtype=torch.float).expand(n_batches)
+    theta = torch.tensor([theta], dtype=torch.float, device = dev_id).expand(n_batches)
 
     if tau > 0:
         theta = theta * (1 - torch.exp(-N_b / (n_clusters * tau)) ** 2)
@@ -116,7 +122,7 @@ def harmonize(
 
     # Initialization
     R, E, O, objectives_harmony = initialize_centroids(
-        Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state
+        Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, use_gpu
     )
 
     np.random.seed(random_state)
@@ -139,8 +145,9 @@ def harmonize(
             max_iter_clustering,
             sigma,
             block_proportion,
+            use_gpu,
         )
-        Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method)
+        Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method, use_gpu)
         end_iter = time.perf_counter()
 
         print(
@@ -155,12 +162,16 @@ def harmonize(
             print("\tReach convergence after {} iteration(s).".format(i + 1))
             break
 
-    return Z_hat.numpy()
+    if dev_id == 'cpu':
+        return Z_hat.numpy()
+    else:
+        return Z_hat.cpu().numpy()
 
 
 def initialize_centroids(
-    Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, n_init=10
+    Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, use_gpu, n_init=10
 ):
+    dev_id = 'cuda' if torch.cuda.is_available() and use_gpu else 'cpu'
     n_cells = Z_norm.shape[0]
 
     kmeans = KMeans(
@@ -170,9 +181,13 @@ def initialize_centroids(
         random_state=random_state,
         n_jobs=-1,
     )
-    kmeans.fit(Z_norm)
 
-    Y = torch.tensor(kmeans.cluster_centers_, dtype=torch.float)
+    if dev_id == 'cpu':
+        kmeans.fit(Z_norm)
+    else:
+        kmeans.fit(Z_norm.cpu())
+
+    Y = torch.tensor(kmeans.cluster_centers_, dtype=torch.float, device = dev_id)
     Y_norm = normalize(Y, p=2, dim=1)
 
     # Initialize R
@@ -186,7 +201,7 @@ def initialize_centroids(
     O = torch.matmul(Phi.t(), R)
 
     objectives_harmony = []
-    compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_harmony)
+    compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_harmony, use_gpu)
 
     return R, E, O, objectives_harmony
 
@@ -206,6 +221,7 @@ def clustering(
     max_iter,
     sigma,
     block_proportion,
+    use_gpu,
     n_init=10,
 ):
 
@@ -215,7 +231,7 @@ def clustering(
     Y_norm = normalize(Y, p=2, dim=1)
 
     objectives_clustering = []
-    compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering)
+    compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, use_gpu)
 
     np.random.seed(random_state)
 
@@ -256,7 +272,7 @@ def clustering(
         Y = torch.matmul(R.t(), Z_norm)
         Y_norm = normalize(Y, p=2, dim=1)
 
-        compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering)
+        compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, use_gpu)
 
         if is_convergent_clustering(objectives_clustering, tol):
             objectives_harmony.append(objectives_clustering[-1])
@@ -265,18 +281,19 @@ def clustering(
     return R, O
 
 
-def correction(X, R, Phi, O, ridge_lambda, correction_method):
+def correction(X, R, Phi, O, ridge_lambda, correction_method, use_gpu):
     if correction_method == "fast":
-        return correction_fast(X, R, Phi, O, ridge_lambda)
+        return correction_fast(X, R, Phi, O, ridge_lambda, use_gpu)
     else:
-        return correction_original(X, R, Phi, ridge_lambda)
+        return correction_original(X, R, Phi, ridge_lambda, use_gpu)
 
 
-def correction_original(X, R, Phi, ridge_lambda):
+def correction_original(X, R, Phi, ridge_lambda, use_gpu):
+    dev_id = 'cuda' if torch.cuda.is_available() and use_gpu else 'cpu'
     n_cells = X.shape[0]
     n_clusters = R.shape[1]
     n_batches = Phi.shape[1]
-    Phi_1 = torch.cat((torch.ones(n_cells, 1), Phi), dim=1)
+    Phi_1 = torch.cat((torch.ones(n_cells, 1, device = dev_id), Phi), dim=1)
 
     Z = X.clone()
     for k in range(n_clusters):
@@ -292,14 +309,15 @@ def correction_original(X, R, Phi, ridge_lambda):
     return Z
 
 
-def correction_fast(X, R, Phi, O, ridge_lambda):
+def correction_fast(X, R, Phi, O, ridge_lambda, use_gpu):
+    dev_id = 'cuda' if torch.cuda.is_available() and use_gpu else 'cpu'
     n_cells = X.shape[0]
     n_clusters = R.shape[1]
     n_batches = Phi.shape[1]
-    Phi_1 = torch.cat((torch.ones(n_cells, 1), Phi), dim=1)
+    Phi_1 = torch.cat((torch.ones(n_cells, 1, device = dev_id), Phi), dim=1)
 
     Z = X.clone()
-    P = torch.eye(n_batches + 1, n_batches + 1)
+    P = torch.eye(n_batches + 1, n_batches + 1, device = dev_id)
     for k in range(n_clusters):
         O_k = O[:, k]
         N_k = torch.sum(O_k)
@@ -311,7 +329,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda):
         P[0, 1:] = -factor * O_k
 
         P_t_B_inv = torch.diag(
-            torch.cat((torch.tensor([[c_inv]]), factor.view(1, -1)), dim=1).squeeze()
+            torch.cat((torch.tensor([[c_inv]], device = dev_id), factor.view(1, -1)), dim=1).squeeze()
         )
         P_t_B_inv[1:, 0] = P[0, 1:] * c_inv
         inv_mat = torch.matmul(P_t_B_inv, P)
@@ -325,7 +343,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda):
     return Z
 
 
-def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr):
+def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr, use_gpu):
     kmeans_error = torch.sum(R * 2 * (1 - torch.matmul(Z_norm, Y_norm.t())))
     entropy_term = sigma * torch.sum(R * torch.log(R))
     diversity_penalty = sigma * torch.sum(
@@ -333,7 +351,10 @@ def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr):
     )
     objective = kmeans_error + entropy_term + diversity_penalty
 
-    objective_arr.append(objective)
+    if torch.cuda.is_available() and use_gpu:
+        objective_arr.append(objective.cpu())
+    else:
+        objective_arr.append(objective)
 
 
 def is_convergent_harmony(objectives_harmony, tol):

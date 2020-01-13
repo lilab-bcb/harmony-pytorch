@@ -15,11 +15,13 @@ def get_batch_codes(batch_mat, batch_key):
     return batch_vec.astype("category").cat.codes.astype("category")
 
 
-def one_hot_tensor(X):
-    ids = torch.LongTensor(X).view(-1, 1)
+def one_hot_tensor(X, use_gpu):
+    dev_id = 'cuda' if torch.cuda.is_available() and use_gpu else 'cpu'
+    ids = torch.tensor(X).long().to(dev_id).view(-1, 1)
+    #ids = torch.LongTensor(X, device = dev_id).view(-1, 1)
     n_row = X.shape[0]
     n_col = X.cat.categories.size
-    Phi = torch.zeros(n_row, n_col, dtype=torch.float)
+    Phi = torch.zeros(n_row, n_col, dtype=torch.float, device = dev_id)
     Phi.scatter_(dim=1, index=ids, value=1.0)
 
     return Phi
