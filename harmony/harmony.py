@@ -121,9 +121,13 @@ def harmonize(
     assert correction_method in ["fast", "original"]
 
     # Initialization
+    start_init = time.perf_counter()
     R, E, O, objectives_harmony = initialize_centroids(
         Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, device_type
     )
+    end_init = time.perf_counter()
+
+    print("\tInitialization is completed in {:.2f}s.".format(end_init - start_init))
 
     np.random.seed(random_state)
     rand_arr = np.random.randint(np.iinfo(np.int32).max, size=max_iter_harmony)
@@ -151,7 +155,7 @@ def harmonize(
         end_iter = time.perf_counter()
 
         print(
-            "\tCompleted {cur_iter} / {total_iter} in {duration:.2f}s.".format(
+            "\tCompleted {cur_iter} / {total_iter} iteration(s) in {duration:.2f}s.".format(
                 cur_iter=i + 1,
                 total_iter=max_iter_harmony,
                 duration=end_iter - start_iter,
