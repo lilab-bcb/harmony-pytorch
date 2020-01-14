@@ -127,14 +127,13 @@ def harmonize(
     )
     end_init = time.perf_counter()
 
-    print("\tInitialization is completed in {:.2f}s.".format(end_init - start_init))
+    print("Initialization is completed in {:.2f}s.".format(end_init - start_init))
 
     np.random.seed(random_state)
-    rand_arr = np.random.randint(np.iinfo(np.int32).max, size=max_iter_harmony)
 
     for i in range(max_iter_harmony):
         start_iter = time.perf_counter()
-        R, O = clustering(
+        clustering(
             Z_norm,
             Pr_b,
             Phi,
@@ -145,7 +144,6 @@ def harmonize(
             theta,
             tol_clustering,
             objectives_harmony,
-            rand_arr[i],
             max_iter_clustering,
             sigma,
             block_proportion,
@@ -163,7 +161,7 @@ def harmonize(
         )
 
         if is_convergent_harmony(objectives_harmony, tol=tol_harmony):
-            print("\tReach convergence after {} iteration(s).".format(i + 1))
+            print("Reach convergence after {} iteration(s).".format(i + 1))
             break
 
     if device_type == 'cpu':
@@ -220,7 +218,6 @@ def clustering(
     theta,
     tol,
     objectives_harmony,
-    random_state,
     max_iter,
     sigma,
     block_proportion,
@@ -235,8 +232,6 @@ def clustering(
 
     objectives_clustering = []
     compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, device_type)
-
-    np.random.seed(random_state)
 
     for i in range(max_iter):
         idx_list = np.arange(n_cells)
