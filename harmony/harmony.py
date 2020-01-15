@@ -185,6 +185,7 @@ def initialize_centroids(
         n_init=n_init,
         random_state=random_state,
         n_jobs=n_jobs,
+        max_iter = 25,
     )
 
     if device_type == 'cpu':
