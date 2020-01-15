@@ -28,6 +28,7 @@ def harmonize(
     correction_method: str = "fast",
     random_state: int = 0,
     use_gpu: bool = False,
+    n_jobs: int = -1,
 ) -> np.array:
     """
     Integrate data using Harmony algorithm.
@@ -80,6 +81,9 @@ def harmonize(
     use_gpu: ``bool``, optional, default: ``False``
         If ``True``, use GPU if available. Otherwise, use CPU only.
 
+    n_jobs: ``int``, optional, default ``-1``
+        How many jobs to use for KMeans. By default, use all available cores.
+
     Returns
     -------
     ``numpy.array``
@@ -123,7 +127,7 @@ def harmonize(
     # Initialization
     start_init = time.perf_counter()
     R, E, O, objectives_harmony = initialize_centroids(
-        Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, device_type
+        Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, device_type, n_jobs
     )
     end_init = time.perf_counter()
 
@@ -171,7 +175,7 @@ def harmonize(
 
 
 def initialize_centroids(
-    Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, device_type, n_init=10
+    Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, device_type, n_jobs, n_init=10
 ):
     n_cells = Z_norm.shape[0]
 
@@ -180,7 +184,7 @@ def initialize_centroids(
         init="k-means++",
         n_init=n_init,
         random_state=random_state,
-        n_jobs=-1,
+        n_jobs=n_jobs,
     )
 
     if device_type == 'cpu':
