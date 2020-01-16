@@ -98,6 +98,7 @@ def harmonize(
     >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
+    start_init = time.perf_counter()
     device_type = 'cpu'
     if use_gpu:
         if torch.cuda.is_available():
@@ -130,14 +131,13 @@ def harmonize(
     assert block_proportion > 0 and block_proportion <= 1
     assert correction_method in ["fast", "original"]
 
-    # Initialization
-    start_init = time.perf_counter()
+    # Initialize centroids
     R, E, O, objectives_harmony = initialize_centroids(
         Z_norm, n_clusters, sigma, Pr_b, Phi, theta, random_state, device_type, n_jobs
     )
     end_init = time.perf_counter()
 
-    print("Initialization is completed in {:.2f}s.".format(end_init - start_init))
+    print("\tInitialization is completed in {:.2f}s.".format(end_init - start_init))
 
     np.random.seed(random_state)
 
