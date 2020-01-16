@@ -4,11 +4,11 @@ import pegasus as pg
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-import os, sys, time
+import os, sys, time, re
 
 from harmony import harmonize
 from harmonypy import run_harmony
-from anndata import read_h5ad, AnnData
+from anndata import AnnData
 from scipy.stats import pearsonr
 from scipy.sparse import csr_matrix
 
@@ -80,11 +80,14 @@ def plot_umap(adata, Z_torch, Z_py, Z_R, prefix, batch_key):
 def test_cell_lines():
     print("Testing on cell lines dataset...")
 
-    X = np.loadtxt("./data/cell_lines/pca.txt")
-    df_metadata = pd.read_csv("./data/cell_lines/metadata.csv")
+    z_files = [f for f in os.listdir("./result") if re.match("cell_lines.*_z.(txt|npy)", f)]
+    if len(z_files) < 3 or not os.path.exists("./result/cell_lines_result.h5ad"):
+        X = np.loadtxt("./data/cell_lines/pca.txt")
+        df_metadata = pd.read_csv("./data/cell_lines/metadata.csv")
+        source_loaded = True
 
-    if os.path.exists("./result/cell_lines_torch_z.txt"):
-        Z_torch = np.loadtxt("./result/cell_lines_torch_z.txt")
+    if os.path.exists("./result/cell_lines_torch_z.npy"):
+        Z_torch = np.load("./result/cell_lines_torch_z.npy")
         print("Precalculated embedding by harmony-pytorch is loaded.")
     else:
         start_torch = time.time()
@@ -92,10 +95,10 @@ def test_cell_lines():
         end_torch = time.time()
 
         print("Time spent for harmony-pytorch = {:.2f}s.".format(end_torch - start_torch))
-        np.savetxt("./result/cell_lines_torch_z.txt", Z_torch)
+        np.save("./result/cell_lines_torch_z.npy", Z_torch)
 
-    if os.path.exists("./result/cell_lines_py_z.txt"):
-        Z_py = np.loadtxt("./result/cell_lines_py_z.txt")
+    if os.path.exists("./result/cell_lines_py_z.npy"):
+        Z_py = np.load("./result/cell_lines_py_z.npy")
         print("Precalculated embedding by harmonypy is loaded.")
     else:
         start_py = time.time()
@@ -105,7 +108,7 @@ def test_cell_lines():
         print("Time spent for harmonypy = {:.2f}s.".format(end_py - start_py))
 
         Z_py = np.transpose(ho.Z_corr)
-        np.savetxt("./result/cell_lines_py_z.txt", Z_py)
+        np.save("./result/cell_lines_py_z.npy", Z_py)
 
     Z_R = np.loadtxt("./result/cell_lines_harmony_z.txt")
 
@@ -122,19 +125,20 @@ def test_cell_lines():
         pg.neighbors(adata, rep = 'pca')
         pg.umap(adata)
 
-    plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "cell_lines", batch_key = "dataset")
+    umap_list = [f for f in os.listdir("./result") if re.match("cell_lines.*.pdf", f)]
+    if len(umap_list) < 4:
+        plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "cell_lines", batch_key = "dataset")
 
 
 def test_pbmc():
     print("Testing on 10x pbmc dataset...")
 
-    if os.path.exists("./result/pbmc_result.h5ad"):
-        adata = None
-    else:
-        adata = read_h5ad("./data/10x_pbmc/original_data.h5ad")
+    z_files = [f for f in os.listdir("./result") if re.match("pbmc.*_z.(txt|npy)", f)]
+    if len(z_files) < 3 or not os.path.exists("./result/pbmc_result.h5ad"):
+        adata = pg.read_input("./data/10x_pbmc/original_data.h5ad")
 
-    if os.path.exists("./result/pbmc_torch_z.txt"):
-        Z_torch = np.loadtxt("./result/pbmc_torch_z.txt")
+    if os.path.exists("./result/pbmc_torch_z.npy"):
+        Z_torch = np.load("./result/pbmc_torch_z.npy")
         print("Precalculated embedding by harmony-pytorch is loaded.")
     else:
         start_torch = time.time()
@@ -142,10 +146,10 @@ def test_pbmc():
         end_torch = time.time()
 
         print("Time spent for harmony-pytorch = {:.2f}s.".format(end_torch - start_torch))
-        np.savetxt("./result/pbmc_torch_z.txt", Z_torch)
+        np.save("./result/pbmc_torch_z.npy", Z_torch)
 
-    if os.path.exists("./result/pbmc_py_z.txt"):
-        Z_py = np.loadtxt("./result/pbmc_py_z.txt")
+    if os.path.exists("./result/pbmc_py_z.npy"):
+        Z_py = np.load("./result/pbmc_py_z.npy")
         print("Precalculated embedding by harmonypy is loaded.")
     else:
         start_py = time.time()
@@ -155,28 +159,31 @@ def test_pbmc():
         print("Time spent for harmonypy = {:.2f}s.".format(end_py - start_py))
 
         Z_py = np.transpose(ho.Z_corr)
-        np.savetxt("./result/pbmc_py_z.txt", Z_py)
+        np.save("./result/pbmc_py_z.npy", Z_py)
 
     Z_R = np.loadtxt("./result/pbmc_harmony_z.txt")
 
     check_metric(Z_torch, Z_py, Z_R, prefix = "pbmc", norm = 'r')
     check_metric(Z_torch, Z_py, Z_R, prefix = "pbmc", norm = 'L2')
 
-    plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "pbmc", batch_key = "Channel")
+    if os.path.exists("./result/pbmc_result.h5ad"):
+        adata = None
+
+    umap_list = [f for f in os.listdir("./result") if re.match("pbmc.*.pdf", f)]
+    if len(umap_list) < 4:
+        plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "pbmc", batch_key = "Channel")
 
 
 def test_mantonbm():
     print("Testing on MantonBM dataset...")
 
-    if os.path.exists("./result/MantonBM_result.h5ad"):
-        adata = None
-    else:
-        adata = read_h5ad("./data/MantonBM/original_data.h5ad")
-
+    z_files = [f for f in os.listdir("./result") if re.match("MantonBM.*_z.(txt|npy)", f)]
+    if len(z_files) < 3 or not os.path.exists("./result/MantonBM_result.h5ad"):
+        adata = pg.read_input("./data/MantonBM/original_data.h5ad")
         adata.obs['Individual'] = pd.Categorical(adata.obs['Channel'].apply(lambda s: s.split('_')[0][-1]))
 
-    if os.path.exists("./result/MantonBM_torch_z.txt"):
-        Z_torch = np.loadtxt("./result/MantonBM_torch_z.txt")
+    if os.path.exists("./result/MantonBM_torch_z.npy"):
+        Z_torch = np.load("./result/MantonBM_torch_z.npy")
         print("Precalculated embedding by harmony-pytorch is loaded.")
     else:
         start_torch = time.time()
@@ -184,10 +191,10 @@ def test_mantonbm():
         end_torch = time.time()
 
         print("Time spent for harmony-pytorch = {:.2f}s.".format(end_torch - start_torch))
-        np.savetxt("./result/MantonBM_torch_z.txt", Z_torch)
+        np.save("./result/MantonBM_torch_z.npy", Z_torch)
 
-    if os.path.exists("./result/MantonBM_py_z.txt"):
-        Z_py = np.loadtxt("./result/MantonBM_py_z.txt")
+    if os.path.exists("./result/MantonBM_py_z.npy"):
+        Z_py = np.load("./result/MantonBM_py_z.npy")
         print("Precalculated embedding by harmonypy is loaded.")
     else:
         start_py = time.time()
@@ -197,7 +204,7 @@ def test_mantonbm():
         print("Time spent for harmonypy = {:.2f}s.".format(end_py - start_py))
 
         Z_py = np.transpose(ho.Z_corr)
-        np.savetxt("./result/MantonBM_py_z.txt", Z_py)
+        np.save("./result/MantonBM_py_z.npy", Z_py)
 
 
     Z_R = np.loadtxt("./result/MantonBM_harmony_z.txt")
@@ -205,7 +212,12 @@ def test_mantonbm():
     check_metric(Z_torch, Z_py, Z_R, prefix = "MantonBM", norm = 'r')
     check_metric(Z_torch, Z_py, Z_R, prefix = "MantonBM", norm = 'L2')
 
-    plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "MantonBM", batch_key = "Individual")
+    if os.path.exists("./result/MantonBM_result.h5ad"):
+        adata = None
+
+    umap_list = [f for f in os.listdir("./result") if re.match("MantonBM.*.pdf", f)]
+    if len(umap_list) < 4:
+        plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "MantonBM", batch_key = "Individual")
 
 
 def gen_plot(norm):
