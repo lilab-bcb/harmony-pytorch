@@ -358,10 +358,7 @@ def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr, devi
     )
     objective = kmeans_error + entropy_term + diversity_penalty
 
-    if device_type == 'cuda':
-        objective_arr.append(objective.cpu())
-    else:
-        objective_arr.append(objective)
+    objective_arr.append(objective)
 
 
 def is_convergent_harmony(objectives_harmony, tol):
@@ -371,7 +368,7 @@ def is_convergent_harmony(objectives_harmony, tol):
     obj_old = objectives_harmony[-2]
     obj_new = objectives_harmony[-1]
 
-    return np.abs(obj_old - obj_new) < tol * np.abs(obj_old)
+    return torch.abs(obj_old - obj_new) < tol * torch.abs(obj_old)
 
 
 def is_convergent_clustering(objectives_clustering, tol, window_size=3):
@@ -384,4 +381,4 @@ def is_convergent_clustering(objectives_clustering, tol, window_size=3):
         obj_old += objectives_clustering[-2 - i]
         obj_new += objectives_clustering[-1 - i]
 
-    return np.abs(obj_old - obj_new) < tol * np.abs(obj_old)
+    return torch.abs(obj_old - obj_new) < tol * torch.abs(obj_old)
