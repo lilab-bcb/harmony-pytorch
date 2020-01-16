@@ -98,7 +98,13 @@ def harmonize(
     >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
-    device_type = 'cuda' if torch.cuda.is_available() and use_gpu else 'cpu'
+    device_type = 'cpu'
+    if use_gpu:
+        if torch.cuda.is_available():
+            device_type = 'cuda'
+            print("Use GPU mode.")
+        else:
+            print("CUDA is not available on your machine. Use CPU mode instead.")
     
     Z = torch.tensor(X, dtype=torch.float, device = device_type)
     Z_norm = normalize(Z, p=2, dim=1)
