@@ -32,7 +32,7 @@ Z = harmonize(X, df_metadata, batch_key = ['Lab', 'Date'])
 
 ### Input as AnnData Object
 
-It's easy for Harmony-pytorch to work with annotated count matrix data structure from [anndata](https://icb-anndata.readthedocs-hosted.com/en/stable/index.html) package:
+It's easy for Harmony-pytorch to work with annotated count matrix data structure from [anndata](https://icb-anndata.readthedocs-hosted.com/en/stable/index.html) package. Let ``adata`` be an AnnData object in Python:
 
 ```python
 from harmony import harmonize
