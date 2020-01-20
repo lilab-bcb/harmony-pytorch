@@ -2,7 +2,7 @@
 
 As most of the data have cell barcodes in rows, we adjusted the algorithm, and thus it's slightly different from the paper.
 
-Also, since Method section of the paper has several typos, we think it necessary to reformulate the algorithm for readers' convenience.
+In this document, we resummarise Harmony algorithm.
 
 ## Notations
 
