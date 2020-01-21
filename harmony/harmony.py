@@ -269,15 +269,13 @@ def clustering(
 
     n_cells = Z_norm.shape[0]
 
-    Y = torch.matmul(R.t(), Z_norm)
-    Y_norm = normalize(Y, p=2, dim=1)
-
     objectives_clustering = []
-    compute_objective(
-        Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, device_type
-    )
 
     for i in range(max_iter):
+        # Compute Cluster Centroids
+        Y = torch.matmul(R.t(), Z_norm)
+        Y_norm = normalize(Y, p=2, dim=1)
+
         idx_list = np.arange(n_cells)
         np.random.shuffle(idx_list)
         block_size = int(n_cells * block_proportion)
@@ -309,10 +307,6 @@ def clustering(
             E += torch.matmul(Pr_b, torch.sum(R_in, dim=0, keepdim=True))
 
             pos += block_size
-
-        # Compute Cluster Centroids
-        Y = torch.matmul(R.t(), Z_norm)
-        Y_norm = normalize(Y, p=2, dim=1)
 
         compute_objective(
             Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, device_type
@@ -359,7 +353,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda, device_type):
     n_batches = Phi.shape[1]
     Phi_1 = torch.cat((torch.ones(n_cells, 1, device=device_type), Phi), dim=1)
 
-    Z = X
+    Z = X.clone()
     P = torch.eye(n_batches + 1, n_batches + 1, device=device_type)
     for k in range(n_clusters):
         O_k = O[:, k]
@@ -392,7 +386,7 @@ def compute_objective(
     Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr, device_type
 ):
     kmeans_error = torch.sum(R * 2 * (1 - torch.matmul(Z_norm, Y_norm.t())))
-    entropy_term = sigma * torch.sum(R * torch.log(R))
+    entropy_term = sigma * torch.sum(-torch.distributions.Categorical(probs=R).entropy())
     diversity_penalty = sigma * torch.sum(
         torch.matmul(theta, O * torch.log(torch.div(O + 1, E + 1)))
     )
@@ -408,7 +402,7 @@ def is_convergent_harmony(objectives_harmony, tol):
     obj_old = objectives_harmony[-2]
     obj_new = objectives_harmony[-1]
 
-    return torch.abs(obj_old - obj_new) < tol * torch.abs(obj_old)
+    return (obj_old - obj_new) < tol * torch.abs(obj_old)
 
 
 def is_convergent_clustering(objectives_clustering, tol, window_size=3):
@@ -421,4 +415,4 @@ def is_convergent_clustering(objectives_clustering, tol, window_size=3):
         obj_old += objectives_clustering[-2 - i]
         obj_new += objectives_clustering[-1 - i]
 
-    return torch.abs(obj_old - obj_new) < tol * torch.abs(obj_old)
+    return (obj_old - obj_new) < tol * torch.abs(obj_old)
