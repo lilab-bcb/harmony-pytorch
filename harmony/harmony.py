@@ -26,7 +26,7 @@ def harmonize(
     theta: float = 2.0,
     tau: int = 0,
     correction_method: str = "original",
-    random_state: int = 0,
+    random_state: int = time.time(),
     use_gpu: bool = False,
     n_jobs_kmeans: int = -1,
 ) -> np.array:
