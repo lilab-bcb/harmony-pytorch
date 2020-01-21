@@ -140,6 +140,8 @@ def harmonize(
     assert block_proportion > 0 and block_proportion <= 1
     assert correction_method in ["fast", "original"]
 
+    np.random.seed(random_state)
+
     # Initialize centroids
     R, E, O, objectives_harmony = initialize_centroids(
         Z_norm,
@@ -148,15 +150,13 @@ def harmonize(
         Pr_b,
         Phi,
         theta,
-        random_state,
+        None,
         device_type,
         n_jobs_kmeans,
     )
     end_init = time.perf_counter()
 
     print("\tInitialization is completed in {:.2f}s.".format(end_init - start_init))
-
-    np.random.seed(random_state)
 
     for i in range(max_iter_harmony):
         start_iter = time.perf_counter()
