@@ -359,7 +359,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda, device_type):
     n_batches = Phi.shape[1]
     Phi_1 = torch.cat((torch.ones(n_cells, 1, device=device_type), Phi), dim=1)
 
-    Z = X.clone()
+    Z = X
     P = torch.eye(n_batches + 1, n_batches + 1, device=device_type)
     for k in range(n_clusters):
         O_k = O[:, k]
