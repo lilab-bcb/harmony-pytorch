@@ -314,8 +314,6 @@ def clustering(
             objectives_harmony.append(objectives_clustering[-1])
             break
 
-    return R, O
-
 
 def correction(X, R, Phi, O, ridge_lambda, correction_method, device_type):
     if correction_method == "fast":
