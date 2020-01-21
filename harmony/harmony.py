@@ -334,11 +334,13 @@ def correction_original(X, R, Phi, ridge_lambda, device_type):
     Phi_1 = torch.cat((torch.ones(n_cells, 1, device=device_type), Phi), dim=1)
 
     Z = X.clone()
+    id_mat = torch.eye(n_batches + 1, n_batches + 1, device = device_type)
+    id_mat[0, 0] = 0
+    Lambda = ridge_lambda * id_mat
     for k in range(n_clusters):
         Phi_t_diag_R = Phi_1.t() * R[:, k].view(1, -1)
         inv_mat = torch.inverse(
-            torch.matmul(Phi_t_diag_R, Phi_1)
-            + ridge_lambda * torch.eye(n_batches + 1, n_batches + 1, device=device_type)
+            torch.matmul(Phi_t_diag_R, Phi_1) + Lambda
         )
         W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
         W[0, :] = 0
@@ -360,7 +362,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda, device_type):
         N_k = torch.sum(O_k)
 
         factor = 1 / (O_k + ridge_lambda)
-        c = N_k + ridge_lambda + torch.sum(-factor * O_k ** 2)
+        c = N_k + torch.sum(-factor * O_k ** 2)
         c_inv = 1 / c
 
         P[0, 1:] = -factor * O_k
