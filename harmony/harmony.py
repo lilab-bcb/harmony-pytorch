@@ -1,5 +1,4 @@
 import torch
-import time
 
 import numpy as np
 import pandas as pd
@@ -101,7 +100,6 @@ def harmonize(
     >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
-    start_init = time.perf_counter()
     device_type = "cpu"
     if use_gpu:
         if torch.cuda.is_available():
@@ -154,12 +152,10 @@ def harmonize(
         device_type,
         n_jobs_kmeans,
     )
-    end_init = time.perf_counter()
 
-    print("\tInitialization is completed in {:.2f}s.".format(end_init - start_init))
+    print("\tInitialization is completed.")
 
     for i in range(max_iter_harmony):
-        start_iter = time.perf_counter()
         clustering(
             Z_norm,
             Pr_b,
@@ -178,13 +174,11 @@ def harmonize(
         )
         Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method, device_type)
         Z_norm = normalize(Z_hat, p=2, dim=1)
-        end_iter = time.perf_counter()
 
         print(
-            "\tCompleted {cur_iter} / {total_iter} iteration(s) in {duration:.2f}s.".format(
+            "\tCompleted {cur_iter} / {total_iter} iteration(s).".format(
                 cur_iter=i + 1,
                 total_iter=max_iter_harmony,
-                duration=end_iter - start_iter,
             )
         )
 
