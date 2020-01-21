@@ -177,6 +177,7 @@ def harmonize(
             device_type,
         )
         Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method, device_type)
+        Z_norm = normalize(Z_hat, p=2, dim=1)
         end_iter = time.perf_counter()
 
         print(
@@ -190,6 +191,8 @@ def harmonize(
         if is_convergent_harmony(objectives_harmony, tol=tol_harmony):
             print("Reach convergence after {} iteration(s).".format(i + 1))
             break
+
+    print("Harmony: {}".format(objectives_harmony))
 
     if device_type == "cpu":
         return Z_hat.numpy()
@@ -319,6 +322,7 @@ def clustering(
             objectives_harmony.append(objectives_clustering[-1])
             break
 
+    print("Clustering: {}".format(objectives_clustering))
     return R, O
 
 
