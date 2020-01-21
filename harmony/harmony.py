@@ -140,6 +140,8 @@ def harmonize(
     assert block_proportion > 0 and block_proportion <= 1
     assert correction_method in ["fast", "original"]
 
+    np.random.seed(random_state)
+
     # Initialize centroids
     R, E, O, objectives_harmony = initialize_centroids(
         Z_norm,
@@ -156,7 +158,7 @@ def harmonize(
 
     print("\tInitialization is completed in {:.2f}s.".format(end_init - start_init))
 
-    np.random.seed(random_state)
+    
 
     for i in range(max_iter_harmony):
         start_iter = time.perf_counter()
@@ -334,11 +336,13 @@ def correction_original(X, R, Phi, ridge_lambda, device_type):
     Phi_1 = torch.cat((torch.ones(n_cells, 1, device=device_type), Phi), dim=1)
 
     Z = X.clone()
+    id_mat = torch.eye(n_batches + 1, n_batches + 1, device = device_type)
+    id_mat[0, 0] = 0
+    Lambda = ridge_lambda * id_mat
     for k in range(n_clusters):
         Phi_t_diag_R = Phi_1.t() * R[:, k].view(1, -1)
         inv_mat = torch.inverse(
-            torch.matmul(Phi_t_diag_R, Phi_1)
-            + ridge_lambda * torch.eye(n_batches + 1, n_batches + 1, device=device_type)
+            torch.matmul(Phi_t_diag_R, Phi_1) + Lambda
         )
         W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
         W[0, :] = 0
