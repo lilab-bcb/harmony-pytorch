@@ -192,8 +192,6 @@ def harmonize(
             print("Reach convergence after {} iteration(s).".format(i + 1))
             break
 
-    print("Harmony: {}".format(objectives_harmony))
-
     if device_type == "cpu":
         return Z_hat.numpy()
     else:
@@ -316,7 +314,6 @@ def clustering(
             objectives_harmony.append(objectives_clustering[-1])
             break
 
-    print("Clustering: {}".format(objectives_clustering))
     return R, O
 
 
