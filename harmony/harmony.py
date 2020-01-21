@@ -25,8 +25,8 @@ def harmonize(
     block_proportion: float = 0.05,
     theta: float = 2.0,
     tau: int = 0,
-    correction_method: str = "original",
-    random_state: int = int(time.time()),
+    correction_method: str = "fast",
+    random_state: int = 2147483648,
     use_gpu: bool = False,
     n_jobs_kmeans: int = -1,
 ) -> np.array:
@@ -364,7 +364,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda, device_type):
         N_k = torch.sum(O_k)
 
         factor = 1 / (O_k + ridge_lambda)
-        c = N_k + ridge_lambda + torch.sum(-factor * O_k ** 2)
+        c = N_k + torch.sum(-factor * O_k ** 2)
         c_inv = 1 / c
 
         P[0, 1:] = -factor * O_k
