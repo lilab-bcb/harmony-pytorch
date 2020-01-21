@@ -150,15 +150,13 @@ def harmonize(
         Pr_b,
         Phi,
         theta,
-        random_state,
+        None,
         device_type,
         n_jobs_kmeans,
     )
     end_init = time.perf_counter()
 
     print("\tInitialization is completed in {:.2f}s.".format(end_init - start_init))
-
-    
 
     for i in range(max_iter_harmony):
         start_iter = time.perf_counter()
