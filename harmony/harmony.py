@@ -177,6 +177,7 @@ def harmonize(
             device_type,
         )
         Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method, device_type)
+        Z_norm = normalize(Z_hat, p=2, dim=1)
         end_iter = time.perf_counter()
 
         print(
@@ -190,6 +191,8 @@ def harmonize(
         if is_convergent_harmony(objectives_harmony, tol=tol_harmony):
             print("Reach convergence after {} iteration(s).".format(i + 1))
             break
+
+    print("Harmony: {}".format(objectives_harmony))
 
     if device_type == "cpu":
         return Z_hat.numpy()
@@ -266,15 +269,13 @@ def clustering(
 
     n_cells = Z_norm.shape[0]
 
-    Y = torch.matmul(R.t(), Z_norm)
-    Y_norm = normalize(Y, p=2, dim=1)
-
     objectives_clustering = []
-    compute_objective(
-        Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, device_type
-    )
 
     for i in range(max_iter):
+        # Compute Cluster Centroids
+        Y = torch.matmul(R.t(), Z_norm)
+        Y_norm = normalize(Y, p=2, dim=1)
+
         idx_list = np.arange(n_cells)
         np.random.shuffle(idx_list)
         block_size = int(n_cells * block_proportion)
@@ -307,10 +308,6 @@ def clustering(
 
             pos += block_size
 
-        # Compute Cluster Centroids
-        Y = torch.matmul(R.t(), Z_norm)
-        Y_norm = normalize(Y, p=2, dim=1)
-
         compute_objective(
             Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, device_type
         )
@@ -319,6 +316,7 @@ def clustering(
             objectives_harmony.append(objectives_clustering[-1])
             break
 
+    print("Clustering: {}".format(objectives_clustering))
     return R, O
 
 
@@ -388,7 +386,7 @@ def compute_objective(
     Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr, device_type
 ):
     kmeans_error = torch.sum(R * 2 * (1 - torch.matmul(Z_norm, Y_norm.t())))
-    entropy_term = sigma * torch.sum(R * torch.log(R))
+    entropy_term = sigma * torch.sum(-torch.distributions.Categorical(probs=R).entropy())
     diversity_penalty = sigma * torch.sum(
         torch.matmul(theta, O * torch.log(torch.div(O + 1, E + 1)))
     )
@@ -404,7 +402,7 @@ def is_convergent_harmony(objectives_harmony, tol):
     obj_old = objectives_harmony[-2]
     obj_new = objectives_harmony[-1]
 
-    return torch.abs(obj_old - obj_new) < tol * torch.abs(obj_old)
+    return (obj_old - obj_new) < tol * torch.abs(obj_old)
 
 
 def is_convergent_clustering(objectives_clustering, tol, window_size=3):
@@ -417,4 +415,4 @@ def is_convergent_clustering(objectives_clustering, tol, window_size=3):
         obj_old += objectives_clustering[-2 - i]
         obj_new += objectives_clustering[-1 - i]
 
-    return torch.abs(obj_old - obj_new) < tol * torch.abs(obj_old)
+    return (obj_old - obj_new) < tol * torch.abs(obj_old)
