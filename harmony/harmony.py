@@ -230,11 +230,10 @@ def initialize_centroids(
     Y_norm = normalize(Y, p=2, dim=1)
 
     # Initialize R
-    dist_mat = 2 * (1 - torch.matmul(Z_norm, Y_norm.t()))
-    R = -dist_mat / sigma
-    R = torch.add(R, -torch.max(R, dim=1, keepdim=True).values)
-    R = torch.exp(R)
-    R = torch.div(R, torch.sum(R, dim=1, keepdim=True))
+    R = torch.exp(
+        -2 / sigma * (1 - torch.matmul(Z_norm, Y_norm.t()))
+    )
+    R = normalize(R, p=1, dim=1)
 
     E = torch.matmul(Pr_b, torch.sum(R, dim=0, keepdim=True))
     O = torch.matmul(Phi.t(), R)
