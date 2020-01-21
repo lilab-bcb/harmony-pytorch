@@ -25,7 +25,7 @@ def harmonize(
     block_proportion: float = 0.05,
     theta: float = 2.0,
     tau: int = 0,
-    correction_method: str = "fast",
+    correction_method: str = "original",
     random_state: int = 0,
     use_gpu: bool = False,
     n_jobs_kmeans: int = -1,
