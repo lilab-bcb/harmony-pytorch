@@ -4,6 +4,12 @@ As most of the data have cell barcodes in rows, we adjusted the algorithm, and t
 
 In this document, we resummarise Harmony algorithm.
 
+To generate PDF version of this document, first install [pandoc](https://pandoc.org/installing.html), then type the following command in your terminal:
+
+```bash
+pandoc Method.md -o Method.pdf
+```
+
 ## Notations
 
 Given an embedding of $N$ cell barcodes in $d$ dimensions, coming from $B$ batches, Harmony tries to cluster them into $K$ clusters first, then integrate data.
@@ -158,18 +164,28 @@ $$
 \begin{aligned}
 R_k &= [R_{1k}, \dots, R_{Nk}];\\
 \Phi_{R,k}^* &= \phi^{*T} \otimes R_k;\\
-W_k &= (\Phi_{R,k}^* \phi^* + \lambda I)^{-1} \Phi_{R,k}^* Z;\\
+W_k &= (\Phi_{R,k}^* \phi^* + \lambda J)^{-1} \Phi_{R,k}^* Z;\\
 W_k[0, :] &= \mathbf{0};\\
 \hat{Z} &= \hat{Z} - \Phi_{R,k}^{*T} W_k.
 \end{aligned}
 $$
 
-where $\otimes$ is multiplication of a matrix and a row vector.
+where $\otimes$ is multiplication of a matrix and a row vector, and 
+
+$$
+J = \begin{bmatrix}
+0 & 0 & 0 & \cdots & 0\\
+0 & 1 & & & \\
+0 &   & 1 & & \\
+\vdots &   &   & \ddots & \\
+0 & & & & 1
+\end{bmatrix}.
+$$
 
 
 ### Improvement
 
-Let $A_k = \phi^{*T}diag(R_k)\phi^* + \lambda I$,
+Let $A_k = \phi^{*T}diag(R_k)\phi^* + \lambda J$,
 
 $$
 \begin{aligned}
@@ -186,13 +202,13 @@ R_{1k} & & \\
 1 & \phi_{11} & \cdots & \phi_{1B} \\
 \vdots & \vdots & \ddots & \vdots \\
 1 & \phi_{N1} & \cdots & \phi_{NB}
-\end{bmatrix} + \lambda I \\
+\end{bmatrix} + \lambda J \\
 &= \begin{bmatrix}
 \sum_{i = 1}^N R_{ik} & \sum_{i = 1}^N \phi_{i1}R_{ik} & \cdots & \sum_{i = 1}^N \phi_{iB}R_{ik} \\
 \sum_{i = 1}^N \phi_{i1}R_{ik} & \sum_{i = 1}^N \phi_{i1}^2 R_ik & \cdots & \sum_{i = 1}^N \phi_{i1}\phi_{iB}R_{ik} \\
 \vdots & \vdots & \ddots & \vdots \\
 \sum_{i = 1}^N \phi_{iB}R_{ik} & \sum_{i = 1}^N \phi_{iB}\phi_{i1}R_{ik} & \cdots & \sum_{i = 1}^N \phi_{iB}^2R_{ik}
-\end{bmatrix} + \lambda I.
+\end{bmatrix} + \lambda J.
 \end{aligned}
 $$
 
@@ -219,8 +235,8 @@ N_k & O_{1k} & \cdots & O_{Bk} \\
 O_{1k} & O_{1k} & & \\
 \vdots & & \ddots & \\
 O_{Bk} & & & O_{Bk}
-\end{bmatrix} + \lambda I = \begin{bmatrix}
-N_k + \lambda & O_{1k} & \cdots & O_{Bk} \\
+\end{bmatrix} + \lambda J = \begin{bmatrix}
+N_k & O_{1k} & \cdots & O_{Bk} \\
 O_{1k} & O_{1k} + \lambda & & \\
 \vdots & & \ddots & \\
 O_{Bk} & & & O_{Bk} + \lambda
@@ -248,7 +264,7 @@ c & & & \\
 $$
 where 
 $$
-c = N_k + \lambda - \sum_{i = 1}^N \frac{O_{ik}^2}{O_{ik}+\lambda}.
+c = N_k - \sum_{i = 1}^N \frac{O_{ik}^2}{O_{ik}+\lambda}.
 $$
 
 $B$ has inverse
