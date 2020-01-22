@@ -106,6 +106,7 @@ def test_cell_lines():
         end_py = time.time()
 
         print("Time spent for harmonypy = {:.2f}s.".format(end_py - start_py))
+        print(ho.objective_harmony)
 
         Z_py = np.transpose(ho.Z_corr)
         np.save("./result/cell_lines_py_z.npy", Z_py)
@@ -125,9 +126,21 @@ def test_cell_lines():
         pg.neighbors(adata, rep = 'pca')
         pg.umap(adata)
 
-    umap_list = [f for f in os.listdir("./result") if re.match("cell_lines.*.pdf", f)]
+    umap_list = [f for f in os.listdir("./plots") if re.match("cell_lines.*.pdf", f)]
     if len(umap_list) < 4:
         plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "cell_lines", batch_key = "dataset")
+
+    if os.path.exists("./result/cell_lines_result.h5ad"):
+       adata = pg.read_input("./result/cell_lines_result.h5ad", h5ad_mode = 'r')
+
+       stat, pvalue, ac_rate = pg.calc_kBET(adata, attr = 'dataset', rep = 'harmony')
+       print("kBET for Harmony: statistic = {stat}, p-value = {pval}, ac rate = {ac_rate}".format(stat = stat, pval = pvalue, ac_rate = ac_rate))
+
+       stat, pvalue, ac_rate = pg.calc_kBET(adata, attr = 'dataset', rep = 'py')
+       print("kBET for harmonypy: statistic = {stat}, p-value = {pval}, ac rate = {ac_rate}".format(stat = stat, pval = pvalue, ac_rate = ac_rate))
+
+       stat, pvalue, ac_rate = pg.calc_kBET(adata, attr = 'dataset', rep = 'torch')
+       print("kBET for harmony-pytorch: statistic = {stat}, p-value = {pval}, ac rate = {ac_rate}".format(stat = stat, pval = pvalue, ac_rate = ac_rate))
 
 
 def test_pbmc():
@@ -156,6 +169,7 @@ def test_pbmc():
         ho = run_harmony(adata.obsm['X_pca'], adata.obs, ['Channel'])
         end_py = time.time()
 
+        print(ho.objective_harmony)
         print("Time spent for harmonypy = {:.2f}s.".format(end_py - start_py))
 
         Z_py = np.transpose(ho.Z_corr)
@@ -169,7 +183,7 @@ def test_pbmc():
     if os.path.exists("./result/pbmc_result.h5ad"):
         adata = None
 
-    umap_list = [f for f in os.listdir("./result") if re.match("pbmc.*.pdf", f)]
+    umap_list = [f for f in os.listdir("./plots") if re.match("pbmc.*.pdf", f)]
     if len(umap_list) < 4:
         plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "pbmc", batch_key = "Channel")
 
@@ -215,7 +229,7 @@ def test_mantonbm():
     if os.path.exists("./result/MantonBM_result.h5ad"):
         adata = None
 
-    umap_list = [f for f in os.listdir("./result") if re.match("MantonBM.*.pdf", f)]
+    umap_list = [f for f in os.listdir("./plots") if re.match("MantonBM.*.pdf", f)]
     if len(umap_list) < 4:
         plot_umap(adata, Z_torch, Z_py, Z_R, prefix = "MantonBM", batch_key = "Individual")
 
@@ -255,10 +269,15 @@ def gen_plot(norm):
     ax = sns.violinplot(x = "dataset", y = "metric", hue = "package", data = df, palette = "muted", split = True, cut = 0)
     ax.set_title("{} between Harmonypy and Harmony-pytorch Integration".format(metric_dict[norm]))
     ax.set(xlabel = 'Dataset', ylabel = "{} on PCs".format(metric_dict[norm]))
+    if norm == 'r':
+        ax.set(ylim = (0.98, 1.001))
+    else:
+        ax.set(ylim = (0, 0.1))
     figure = ax.get_figure()
     legend_loc = 'lower right' if norm == 'r' else 'upper right'
     figure.get_axes()[0].legend(title = "Package", loc = legend_loc)
     figure.savefig("./plots/{}_stats.png".format(norm), dpi = 400)
+    plt.close()
 
 
 if __name__ == '__main__':
