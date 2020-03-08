@@ -108,7 +108,7 @@ def harmonize(
         else:
             print("CUDA is not available on your machine. Use CPU mode instead.")
 
-    Z = torch.tensor(X, dtype=torch.float, device=device_type)
+    Z = torch.tensor(np.array(X), dtype=torch.float, device=device_type)
     Z_norm = normalize(Z, p=2, dim=1)
     n_cells = Z.shape[0]
 
