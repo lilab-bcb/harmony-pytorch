@@ -22,7 +22,7 @@ Usage
 General Case
 ##############
 
-Given an embedding ``X`` as a N-by-d matrix (N for number of cells, d for embedding components) and cell attributes as a Data Frame ``df_metadata``, use Harmony for data integration as the following::
+Given an embedding ``X`` as a N-by-d matrix in numpy array structure (N for number of cells, d for embedding components) and cell attributes as a Data Frame ``df_metadata``, use Harmony for data integration as the following::
 
 	from harmony import harmonize
 	Z = harmonize(X, df_metadata, batch_key = 'Channel')
