@@ -113,7 +113,7 @@ def harmonize(
     n_cells = Z.shape[0]
 
     batch_codes = get_batch_codes(batch_mat, batch_key)
-    n_batches = batch_codes.nunique()
+    n_batches = batch_codes.cat.categories.size
     N_b = torch.tensor(
         batch_codes.value_counts(sort=False).values,
         dtype=torch.float,
