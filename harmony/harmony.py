@@ -100,6 +100,8 @@ def harmonize(
     >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
+    assert(isinstance(X, np.ndarray))
+
     device_type = "cpu"
     if use_gpu:
         if torch.cuda.is_available():
@@ -108,7 +110,11 @@ def harmonize(
         else:
             print("CUDA is not available on your machine. Use CPU mode instead.")
 
-    Z = torch.tensor(X, dtype=torch.float, device=device_type)
+    (stride_0, stride_1) = X.strides
+    if stride_0 < 0 or stride_1 < 0:
+        Z = torch.tensor(X.copy(), dtype=torch.float, device=device_type)
+    else:
+        Z = torch.tensor(X, dtype=torch.float, device=device_type)
     Z_norm = normalize(Z, p=2, dim=1)
     n_cells = Z.shape[0]
 
