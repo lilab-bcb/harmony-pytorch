@@ -1,6 +1,9 @@
-from ._version import get_versions
-
-__version__ = get_versions()["version"]
-del get_versions
-
 from .harmony import harmonize
+
+from importlib_metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version('harmony-pytorch')
+    del version
+except PackageNotFoundError:
+    pass

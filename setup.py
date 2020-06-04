@@ -1,4 +1,3 @@
-import versioneer
 from setuptools import setup, find_packages
 from codecs import open
 from os import path
@@ -15,8 +14,6 @@ requires = [
 
 setup(
     name="harmony-pytorch",
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
     description="Pytorch implementation of Harmony algorithm on single-cell sequencing data integration",
     long_description=long_description,
     url="https://github.com/lilab-bcb/harmony-pytorch",
@@ -39,5 +36,6 @@ setup(
     keywords="single-cell genomics data integration",
     packages=find_packages(),
     install_requires=requires,
+    setup_requires=["setuptools_scm"],
     python_requires="~=3.5",
 )
