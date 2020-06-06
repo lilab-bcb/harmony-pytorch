@@ -10,6 +10,7 @@ requires = [
     "torch",
     "numpy",
     "scikit-learn",
+    "importlib-metadata",
 ]
 
 setup(
