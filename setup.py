@@ -15,6 +15,7 @@ requires = [
 
 setup(
     name="harmony-pytorch",
+    use_scm_version=True,
     description="Pytorch implementation of Harmony algorithm on single-cell sequencing data integration",
     long_description=long_description,
     url="https://github.com/lilab-bcb/harmony-pytorch",
