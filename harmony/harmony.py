@@ -212,14 +212,16 @@ def initialize_centroids(
 ):
     n_cells = Z_norm.shape[0]
 
-    kmeans = KMeans(
-        n_clusters=n_clusters,
-        init="k-means++",
-        n_init=n_init,
-        random_state=random_state,
-        n_jobs=n_jobs,
-        max_iter=25,
-    )
+    kmeans_params = {'n_clusters': n_clusters,
+                     'init': "k-means++",
+                     'n_init': n_init,
+                     'random_state': random_state,
+                     'max_iter': 25,
+                    }
+    if (n_jobs is not None) and n_jobs != -1:
+        kmeans_params['n_jobs'] = n_jobs
+
+    kmeans = KMeans(**kmeans_params)
 
     if device_type == "cpu":
         kmeans.fit(Z_norm)
