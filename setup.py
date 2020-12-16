@@ -9,6 +9,7 @@ with open(path.join(here, "README.rst"), encoding="utf-8") as f:
 requires = [
     "torch",
     "numpy",
+    "pandas",
     "scikit-learn",
     "importlib-metadata",
 ]
