@@ -11,7 +11,7 @@ requires = [
     "numpy",
     "pandas",
     "scikit-learn",
-    "importlib-metadata",
+    "importlib_metadata>=0.7; python_version < '3.8'",
 ]
 
 setup(
