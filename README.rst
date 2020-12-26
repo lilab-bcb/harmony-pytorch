@@ -12,7 +12,7 @@ Harmony-Pytorch
 .. |Python| image:: https://img.shields.io/pypi/pyversions/harmony-pytorch.svg
    :target: https://pypi.org/project/harmony-pytorch
 
-This is a Pytorch implementation of Harmony algorithm on single-cell sequencing data integration. Please see [Ilya Korsunsky et al., 2019](https://www.nature.com/articles/s41592-019-0619-0) for details.
+This is a Pytorch implementation of Harmony algorithm on single-cell sequencing data integration. Please see `Ilya Korsunsky et al., 2019 <https://www.nature.com/articles/s41592-019-0619-0>`_ for details.
 
 Installation
 ^^^^^^^^^^^^^
