@@ -1,10 +1,13 @@
 Harmony-Pytorch
 ---------------
 
-|PyPI| |Python|
+|PyPI| |Anaconda| |Python|
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/harmony-pytorch.svg
    :target: https://pypi.org/project/harmony-pytorch
+
+.. |Anaconda| image:: https://anaconda.org/bioconda/harmony-pytorch/badges/version.svg
+   :target: https://anaconda.org/bioconda/harmony-pytorch
 
 .. |Python| image:: https://img.shields.io/pypi/pyversions/harmony-pytorch.svg
    :target: https://pypi.org/project/harmony-pytorch
