@@ -225,8 +225,6 @@ def initialize_centroids(
                      'random_state': random_state,
                      'max_iter': 25,
                     }
-    if (n_jobs is not None) and n_jobs != -1:
-        kmeans_params['n_jobs'] = n_jobs
 
     kmeans = KMeans(**kmeans_params)
 

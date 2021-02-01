@@ -12,7 +12,7 @@ requires = [
     "pandas",
     "psutil",
     "threadpoolctl",
-    "scikit-learn",
+    "scikit-learn>=0.23",
     "importlib_metadata>=0.7; python_version < '3.8'",
 ]
 
