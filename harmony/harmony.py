@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 
+
 from sklearn.cluster import KMeans
 from torch.nn.functional import normalize
 from typing import Union, List
@@ -27,7 +28,7 @@ def harmonize(
     correction_method: str = "fast",
     random_state: int = 0,
     use_gpu: bool = False,
-    n_jobs_kmeans: int = -1,
+    n_jobs: int = -1,
 ) -> np.array:
     """
     Integrate data using Harmony algorithm.
@@ -83,8 +84,8 @@ def harmonize(
     use_gpu: ``bool``, optional, default: ``False``
         If ``True``, use GPU if available. Otherwise, use CPU only.
 
-    n_jobs_kmeans: ``int``, optional, default ``-1``
-        How many threads to use for KMeans. By default, use all available cores.
+    n_jobs: ``int``, optional, default ``-1``
+        How many CPU threads to use. By default, use all physical cores. If 'use_gpu' is True, this option only affects the KMeans step.
 
     Returns
     -------
@@ -101,6 +102,12 @@ def harmonize(
     """
 
     assert(isinstance(X, np.ndarray))
+
+    if n_jobs < 0:
+        n_jobs = psutil.cpu_count(logical=False) # get physical cores
+        if n_jobs is None:
+            n_jobs = psutil.cpu_count(logical=True) # if undetermined, use logical cores instead
+    torch.set_num_threads(n_jobs)
 
     device_type = "cpu"
     if use_gpu:
@@ -156,7 +163,7 @@ def harmonize(
         theta,
         None,
         device_type,
-        n_jobs_kmeans,
+        n_jobs,
     )
 
     print("\tInitialization is completed.")
@@ -223,10 +230,12 @@ def initialize_centroids(
 
     kmeans = KMeans(**kmeans_params)
 
-    if device_type == "cpu":
-        kmeans.fit(Z_norm)
-    else:
-        kmeans.fit(Z_norm.cpu())
+    from threadpoolctl import threadpool_limits
+    with threadpool_limits(limits = n_jobs):
+        if device_type == "cpu":
+            kmeans.fit(Z_norm)
+        else:
+            kmeans.fit(Z_norm.cpu())
 
     Y = torch.tensor(kmeans.cluster_centers_, dtype=torch.float, device=device_type)
     Y_norm = normalize(Y, p=2, dim=1)

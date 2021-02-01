@@ -10,6 +10,8 @@ requires = [
     "torch",
     "numpy",
     "pandas",
+    "psutil",
+    "threadpoolctl",
     "scikit-learn",
     "importlib_metadata>=0.7; python_version < '3.8'",
 ]
