@@ -104,6 +104,7 @@ def harmonize(
     assert(isinstance(X, np.ndarray))
 
     if n_jobs < 0:
+        import psutil
         n_jobs = psutil.cpu_count(logical=False) # get physical cores
         if n_jobs is None:
             n_jobs = psutil.cpu_count(logical=True) # if undetermined, use logical cores instead
