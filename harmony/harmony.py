@@ -29,6 +29,7 @@ def harmonize(
     random_state: int = 0,
     use_gpu: bool = False,
     n_jobs: int = -1,
+    verbose: bool = True,
 ) -> np.array:
     """
     Integrate data using Harmony algorithm.
@@ -87,6 +88,9 @@ def harmonize(
     n_jobs: ``int``, optional, default ``-1``
         How many CPU threads to use. By default, use all physical cores. If 'use_gpu' is True, this option only affects the KMeans step.
 
+    verbose: ``bool``, optional, default ``True``
+        If ``True``, print verbose output.
+
     Returns
     -------
     ``numpy.array``
@@ -114,9 +118,11 @@ def harmonize(
     if use_gpu:
         if torch.cuda.is_available():
             device_type = "cuda"
-            print("Use GPU mode.")
+            if verbose:
+                print("Use GPU mode.")
         else:
-            print("CUDA is not available on your machine. Use CPU mode instead.")
+            if verbose:
+                print("CUDA is not available on your machine. Use CPU mode instead.")
 
     (stride_0, stride_1) = X.strides
     if stride_0 < 0 or stride_1 < 0:
@@ -167,7 +173,8 @@ def harmonize(
         n_jobs,
     )
 
-    print("\tInitialization is completed.")
+    if verbose:
+        print("\tInitialization is completed.")
 
     for i in range(max_iter_harmony):
         clustering(
@@ -189,15 +196,17 @@ def harmonize(
         Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method, device_type)
         Z_norm = normalize(Z_hat, p=2, dim=1)
 
-        print(
-            "\tCompleted {cur_iter} / {total_iter} iteration(s).".format(
-                cur_iter=i + 1,
-                total_iter=max_iter_harmony,
+        if verbose:
+            print(
+                "\tCompleted {cur_iter} / {total_iter} iteration(s).".format(
+                    cur_iter=i + 1,
+                    total_iter=max_iter_harmony,
+                )
             )
-        )
 
         if is_convergent_harmony(objectives_harmony, tol=tol_harmony):
-            print("Reach convergence after {} iteration(s).".format(i + 1))
+            if verbose:
+                print("Reach convergence after {} iteration(s).".format(i + 1))
             break
 
     if device_type == "cpu":
