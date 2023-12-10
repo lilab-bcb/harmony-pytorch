@@ -13,7 +13,7 @@ requires = [
     "psutil",
     "threadpoolctl",
     "scikit-learn>=0.23",
-    "importlib_metadata>=0.7;",
+    "importlib_metadata>=0.7",
 ]
 
 setup(
