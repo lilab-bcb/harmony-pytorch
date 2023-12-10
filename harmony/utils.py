@@ -2,9 +2,11 @@ import torch
 
 
 def get_batch_codes(batch_mat, batch_key):
-    if type(batch_key) is str or len(batch_key) == 1:
-        if not type(batch_key) is str:
-            batch_key = batch_key[0]
+    if type(batch_key) is str:
+        batch_vec = batch_mat[batch_key]
+
+    elif len(batch_key) == 1:
+        batch_key = batch_key[0]
 
         batch_vec = batch_mat[batch_key]
 

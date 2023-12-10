@@ -120,9 +120,12 @@ def harmonize(
             device_type = "cuda"
             if verbose:
                 print("Use GPU mode.")
-        else:
+        elif torch.backends.mps.is_available():
+            device_type = "mps"
             if verbose:
-                print("CUDA is not available on your machine. Use CPU mode instead.")
+                print("Use Metal (MPS) mode.")
+        elif verbose:
+            print("Neither CUDA nor MPS is available on your machine. Use CPU mode instead.")
 
     (stride_0, stride_1) = X.strides
     if stride_0 < 0 or stride_1 < 0:
@@ -156,7 +159,7 @@ def harmonize(
     theta = theta.view(1, -1)
 
     assert block_proportion > 0 and block_proportion <= 1
-    assert correction_method in ["fast", "original"]
+    assert correction_method in {"fast", "original"}
 
     np.random.seed(random_state)
 
@@ -206,13 +209,10 @@ def harmonize(
 
         if is_convergent_harmony(objectives_harmony, tol=tol_harmony):
             if verbose:
-                print("Reach convergence after {} iteration(s).".format(i + 1))
+                print(f"Reach convergence after {i + 1} iteration(s).")
             break
 
-    if device_type == "cpu":
-        return Z_hat.numpy()
-    else:
-        return Z_hat.cpu().numpy()
+    return Z_hat.numpy() if device_type == "cpu" else Z_hat.cpu().numpy()
 
 
 def initialize_centroids(
@@ -287,7 +287,7 @@ def clustering(
 
     objectives_clustering = []
 
-    for i in range(max_iter):
+    for _ in range(max_iter):
         # Compute Cluster Centroids
         Y = torch.matmul(R.t(), Z_norm)
         Y_norm = normalize(Y, p=2, dim=1)
