@@ -12,8 +12,7 @@ requires = [
     "pandas",
     "psutil",
     "threadpoolctl",
-    "scikit-learn>=0.23",
-    "importlib_metadata>=0.7",
+    "scikit-learn>=0.23"
 ]
 
 setup(
@@ -24,7 +23,7 @@ setup(
     url="https://github.com/lilab-bcb/harmony-pytorch",
     author="Yiming Yang, Bo Li",
     author_email="yyang43@mgh.harvard.edu, bli28@mgh.harvard.edu",
-    classifiers=[  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    classifiers=[ # https://pypi.python.org/pypi?%3Aaction=list_classifiers
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
