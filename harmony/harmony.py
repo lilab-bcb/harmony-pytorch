@@ -10,7 +10,6 @@ from typing import Union, List
 from .utils import one_hot_tensor, get_batch_codes
 
 
-
 def harmonize(
     X: np.array,
     batch_mat: pd.DataFrame,
@@ -105,13 +104,16 @@ def harmonize(
     >>> X_harmony = harmonize(adata.obsm['X_pca'], adata.obs, ['Channel', 'Lab'])
     """
 
-    assert(isinstance(X, np.ndarray))
+    assert isinstance(X, np.ndarray)
 
     if n_jobs < 0:
         import psutil
-        n_jobs = psutil.cpu_count(logical=False) # get physical cores
+
+        n_jobs = psutil.cpu_count(logical=False)  # get physical cores
         if n_jobs is None:
-            n_jobs = psutil.cpu_count(logical=True) # if undetermined, use logical cores instead
+            n_jobs = psutil.cpu_count(
+                logical=True
+            )  # if undetermined, use logical cores instead
     torch.set_num_threads(n_jobs)
 
     device_type = "cpu"
@@ -120,9 +122,14 @@ def harmonize(
             device_type = "cuda"
             if verbose:
                 print("Use GPU mode.")
-        else:
+        elif torch.backends.mps.is_available():
+            device_type = "mps"
             if verbose:
-                print("CUDA is not available on your machine. Use CPU mode instead.")
+                print("Use Metal (MPS) mode.")
+        elif verbose:
+            print(
+                "Neither CUDA nor MPS is available on your machine. Use CPU mode instead."
+            )
 
     (stride_0, stride_1) = X.strides
     if stride_0 < 0 or stride_1 < 0:
@@ -156,7 +163,7 @@ def harmonize(
     theta = theta.view(1, -1)
 
     assert block_proportion > 0 and block_proportion <= 1
-    assert correction_method in ["fast", "original"]
+    assert correction_method in {"fast", "original"}
 
     np.random.seed(random_state)
 
@@ -206,13 +213,10 @@ def harmonize(
 
         if is_convergent_harmony(objectives_harmony, tol=tol_harmony):
             if verbose:
-                print("Reach convergence after {} iteration(s).".format(i + 1))
+                print(f"Reach convergence after {i + 1} iteration(s).")
             break
 
-    if device_type == "cpu":
-        return Z_hat.numpy()
-    else:
-        return Z_hat.cpu().numpy()
+    return Z_hat.numpy() if device_type == "cpu" else Z_hat.cpu().numpy()
 
 
 def initialize_centroids(
@@ -229,17 +233,19 @@ def initialize_centroids(
 ):
     n_cells = Z_norm.shape[0]
 
-    kmeans_params = {'n_clusters': n_clusters,
-                     'init': "k-means++",
-                     'n_init': n_init,
-                     'random_state': random_state,
-                     'max_iter': 25,
-                    }
+    kmeans_params = {
+        "n_clusters": n_clusters,
+        "init": "k-means++",
+        "n_init": n_init,
+        "random_state": random_state,
+        "max_iter": 25,
+    }
 
     kmeans = KMeans(**kmeans_params)
 
     from threadpoolctl import threadpool_limits
-    with threadpool_limits(limits = n_jobs):
+
+    with threadpool_limits(limits=n_jobs):
         if device_type == "cpu":
             kmeans.fit(Z_norm)
         else:
@@ -249,9 +255,7 @@ def initialize_centroids(
     Y_norm = normalize(Y, p=2, dim=1)
 
     # Initialize R
-    R = torch.exp(
-        -2 / sigma * (1 - torch.matmul(Z_norm, Y_norm.t()))
-    )
+    R = torch.exp(-2 / sigma * (1 - torch.matmul(Z_norm, Y_norm.t())))
     R = normalize(R, p=1, dim=1)
 
     E = torch.matmul(Pr_b, torch.sum(R, dim=0, keepdim=True))
@@ -282,12 +286,11 @@ def clustering(
     device_type,
     n_init=10,
 ):
-
     n_cells = Z_norm.shape[0]
 
     objectives_clustering = []
 
-    for i in range(max_iter):
+    for _ in range(max_iter):
         # Compute Cluster Centroids
         Y = torch.matmul(R.t(), Z_norm)
         Y_norm = normalize(Y, p=2, dim=1)
@@ -298,12 +301,8 @@ def clustering(
         pos = 0
         while pos < len(idx_list):
             idx_in = idx_list[pos : (pos + block_size)]
-            R_in = R[
-                idx_in,
-            ]
-            Phi_in = Phi[
-                idx_in,
-            ]
+            R_in = R[idx_in,]
+            Phi_in = Phi[idx_in,]
 
             # Compute O and E on left out data.
             O -= torch.matmul(Phi_in.t(), R_in)
@@ -347,14 +346,12 @@ def correction_original(X, R, Phi, ridge_lambda, device_type):
     Phi_1 = torch.cat((torch.ones(n_cells, 1, device=device_type), Phi), dim=1)
 
     Z = X.clone()
-    id_mat = torch.eye(n_batches + 1, n_batches + 1, device = device_type)
+    id_mat = torch.eye(n_batches + 1, n_batches + 1, device=device_type)
     id_mat[0, 0] = 0
     Lambda = ridge_lambda * id_mat
     for k in range(n_clusters):
         Phi_t_diag_R = Phi_1.t() * R[:, k].view(1, -1)
-        inv_mat = torch.inverse(
-            torch.matmul(Phi_t_diag_R, Phi_1) + Lambda
-        )
+        inv_mat = torch.inverse(torch.matmul(Phi_t_diag_R, Phi_1) + Lambda)
         W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
         W[0, :] = 0
         Z -= torch.matmul(Phi_t_diag_R.t(), W)
@@ -375,7 +372,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda, device_type):
         N_k = torch.sum(O_k)
 
         factor = 1 / (O_k + ridge_lambda)
-        c = N_k + torch.sum(-factor * O_k ** 2)
+        c = N_k + torch.sum(-factor * O_k**2)
         c_inv = 1 / c
 
         P[0, 1:] = -factor * O_k
@@ -401,7 +398,9 @@ def compute_objective(
     Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr, device_type
 ):
     kmeans_error = torch.sum(R * 2 * (1 - torch.matmul(Z_norm, Y_norm.t())))
-    entropy_term = sigma * torch.sum(-torch.distributions.Categorical(probs=R).entropy())
+    entropy_term = sigma * torch.sum(
+        -torch.distributions.Categorical(probs=R).entropy()
+    )
     diversity_penalty = sigma * torch.sum(
         torch.matmul(theta, O * torch.log(torch.div(O + 1, E + 1)))
     )

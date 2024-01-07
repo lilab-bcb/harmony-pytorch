@@ -7,13 +7,12 @@ with open(path.join(here, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
 requires = [
-    "torch",
+    "torch>=1.12",
     "numpy",
     "pandas",
     "psutil",
     "threadpoolctl",
-    "scikit-learn>=0.23",
-    "importlib_metadata>=0.7; python_version < '3.8'",
+    "scikit-learn>=0.23"
 ]
 
 setup(
