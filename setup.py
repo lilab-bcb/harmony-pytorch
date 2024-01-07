@@ -22,7 +22,7 @@ setup(
     long_description=long_description,
     url="https://github.com/lilab-bcb/harmony-pytorch",
     author="Yiming Yang, Bo Li",
-    author_email="yyang43@mgh.harvard.edu, bli28@mgh.harvard.edu",
+    author_email="yang.yihming@gmail.com, lijiganjun@gmail.com",
     classifiers=[ # https://pypi.python.org/pypi?%3Aaction=list_classifiers
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
@@ -41,5 +41,5 @@ setup(
     packages=find_packages(),
     install_requires=requires,
     setup_requires=["setuptools_scm"],
-    python_requires="~=3.5",
+    python_requires="~=3.8",
 )
