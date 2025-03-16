@@ -32,6 +32,7 @@ Moreover, if both $Z_i$ and $Y_k$ are L2-normalized, their euclidean distance is
 $$
 e_1 = \sum_{i, k} 2R_{ik}(1 - Z_{i} \cdot Y_{k}^T) = \sum_{i, k} 2R * (1 - Z Y^T)
 $$
+
 where $*$ is element-wise product.
 
 * Cross-entropy Error:
@@ -43,12 +44,13 @@ $$
 * Diversity Penalty:
 
 $$
-\begin{aligned}
+\begin{align*}
 e_3 &= \sigma \sum_{i, k} \theta R_{ik} \sum_{b}\phi_{ib}\log{\Big( \frac{O_{bk} + 1}{E_{bk} + 1} \Big)} \\
     &= \sigma \sum_{b, k} \theta \Big[ (\phi^T R) * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big] \\
     &= \sigma \sum_{i, k} \theta \Big[ O * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big]
-\end{aligned}
+\end{align*}
 $$
+
 where $\theta$ of shape $1 \times B$ are the discounting hyperparameters.
 
 Therefore, the objective function is
@@ -86,12 +88,12 @@ Then L1-normalize $R$ on rows, so that each row sums up to 1.
 
 4. Initialize $E$ and $O$:
 
-$$
-\begin{aligned}
+```math
+\begin{align*}
 (E)_{bk} = Pr_b \cdot \sum_{i = 1}^N R_{ik} \qquad &\Rightarrow \qquad E = Pr^T \cdot [R_{\cdot 1}, \dots, R_{\cdot K}];\\
 (O)_{bk} = \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad &\Rightarrow \qquad O = \phi^T R.
-\end{aligned}
-$$
+\end{align*}
+```
 
 5. Compute objective value with $\hat{Y}$, $\hat{Z}$, $R$, $O$, and $E$.
 
@@ -108,14 +110,15 @@ E = E - Pr^T \cdot [R_{in, 1}, \dots, R_{in, K}], \qquad O = O - \phi_{in}^T R_{
 where $R_{in, 1}, ..., R_{in, K}$ are the summations of $R_{ik}$ over cells in the current block regarding each cluster $k$.
 
 2. Update and normalize $R$:
-$$
-\begin{aligned}
+
+```math
+\begin{align*}
 R_{in} &= \exp{\Big( -\frac{2(1 - \hat{Z}_{in}\hat{Y}^T)}{\sigma} \Big)};\\
 \Omega &= \phi^{in} \Big( \frac{E+1}{O+1} \Big)^\Theta; \\
 R_{in} &= R_{in} \Omega; \\
 R_{in} &= \text{L1-Normalize}(R_{in}, \text{row}).
-\end{aligned}
-$$
+\end{align*}
+```
 
 where $\Theta = [\theta^T, \dots, \theta^T]$ of shape $B \times K$.
 
@@ -128,10 +131,10 @@ $$
 4. Update cluster centroids:
 
 $$
-\begin{aligned}
+\begin{align*}
 \hat{Y} &= \sum_{i = 1}^N R_{ik}\hat{Z}_{id} = R^T \hat{Z};\\
 \hat{Y} &= \text{L2-Normalize}(\hat{Y}, \text{row}).
-\end{aligned}
+\end{align*}
 $$
 
 5. Compute objective value with updated $\hat{Y}$, $\hat{Z}$, $R$, $O$, and $E$.
@@ -156,15 +159,15 @@ $$
 
 For each cluster $k$,
 
-$$
-\begin{aligned}
+```math
+\begin{align*}
 R_k &= [R_{1k}, \dots, R_{Nk}];\\
 \Phi_{R,k}^* &= \phi^{*T} \otimes R_k;\\
 W_k &= (\Phi_{R,k}^* \phi^* + \lambda J)^{-1} \Phi_{R,k}^* Z;\\
 W_k[0, :] &= \mathbf{0};\\
 \hat{Z} &= \hat{Z} - \Phi_{R,k}^{*T} W_k.
-\end{aligned}
-$$
+\end{align*}
+```
 
 where $\otimes$ is row-wise multiplication of a matrix and a row vector, and
 
@@ -198,7 +201,7 @@ W_k = A_k^{-1}\Phi_{R, k}^* Z.
 Since
 
 ```math
-\begin{aligned}
+\begin{align*}
 A_k &= \begin{bmatrix}
 1 & \cdots & 1 \\
 \phi_{11} & \cdots & \phi_{N1} \\
@@ -219,7 +222,7 @@ R_{1k} & & \\
 \vdots & \vdots & \ddots & \vdots \\
 \sum_{i = 1}^N \phi_{iB}R_{ik} & \sum_{i = 1}^N \phi_{iB}\phi_{i1}R_{ik} & \cdots & \sum_{i = 1}^N \phi_{iB}^2R_{ik}
 \end{bmatrix} + \lambda J,
-\end{aligned}
+\end{align*}
 ```
 
 it's easy to see that
@@ -237,10 +240,10 @@ and
 Let
 
 $$
-\begin{aligned}
+\begin{align*}
 N_k &= \sum_{i = 1}^N R_{ik},\\
 N_{bk} &= \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad \Rightarrow \qquad N = \phi^T R \qquad \Rightarrow \qquad N = O.
-\end{aligned}
+\end{align*}
 $$
 
 Then we have
@@ -307,7 +310,7 @@ c^{-1} & & & \\
 Therefore,
 
 ```math
-\begin{aligned}
+\begin{align*}
 A^{-1} &= P^T\mathcal{B}^{-1}P \\
 &= \begin{bmatrix}
 c^{-1} & & & \\
@@ -315,7 +318,7 @@ c^{-1} & & & \\
 \vdots & & \ddots & \\
 -\frac{O_{Bk}}{O_{Bk}+\lambda}c^{-1} & & & \frac{1}{O_{Bk}+\lambda}
 \end{bmatrix} \cdot P
-\end{aligned}
+\end{align*}
 ```
 
 which is decomposited into a lower-triangular, a diagonal, and an upper-triangular matrix.
