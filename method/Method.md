@@ -38,6 +38,7 @@ Moreover, if both $Z_i$ and $Y_k$ are L2-normalized, their euclidean distance is
 $$
 e_1 = \sum_{i, k} 2R_{ik}(1 - Z_{i} \cdot Y_{k}^T) = \sum_{i, k} 2R * (1 - Z Y^T)
 $$
+
 where $*$ is element-wise product.
 
 * Cross-entropy Error:
