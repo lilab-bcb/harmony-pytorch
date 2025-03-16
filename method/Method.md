@@ -2,13 +2,7 @@
 
 As most of the data have cell barcodes in rows, we adjusted the algorithm, and thus it's slightly different from the paper.
 
-In this document, we resummarise Harmony algorithm.
-
-To generate PDF version of this document, first install [pandoc](https://pandoc.org/installing.html), then type the following command in your terminal:
-
-```bash
-pandoc Method.md -o Method.pdf
-```
+In this document, we resummarise the Harmony algorithm.
 
 ## Notations
 
@@ -109,9 +103,11 @@ Then L1-normalize $R$ on rows, so that each row sums up to 1.
 
 1. Compute $O$ and $E$ on left-out data:
 
-$$
+```math
 E = E - Pr^T \cdot [R_{in, 1}, \dots, R_{in, K}], \qquad O = O - \phi_{in}^T R_{in}.
-$$
+```
+
+where $R_{in, 1}, ..., R_{in, K}$ are the summations of $R_{ik}$ over cells in the current block regarding each cluster $k$.
 
 2. Update and normalize $R$:
 
@@ -173,7 +169,7 @@ W_k[0, :] &= \mathbf{0};\\
 \end{align*}
 ```
 
-where $\otimes$ is multiplication of a matrix and a row vector, and
+where $\otimes$ is row-wise multiplication of a matrix and a row vector, and
 
 $$
 J = \begin{bmatrix}
@@ -188,15 +184,23 @@ $$
 
 ### Improvement
 
-Let
+We don't need to directly calculate the matrix inverse:
 
 ```math
-A_k = \phi^{*T}diag(R_k)\phi^* + \lambda J,
+(\Phi_{R,k}^* \phi^* + \lambda J)^{-1}
 ```
 
-then
+of shape $(B+1)\times(B+1)$, which can be time consuming when the number of batches $B$ is high.
 
-$$
+Let $A_k = \phi^{*T}diag(R_k)\phi^* + \lambda J$, then
+
+```math
+W_k = A_k^{-1}\Phi_{R, k}^* Z.
+```
+
+Since
+
+```math
 \begin{align*}
 A_k &= \begin{bmatrix}
 1 & \cdots & 1 \\
@@ -217,17 +221,21 @@ R_{1k} & & \\
 \sum_{i = 1}^N \phi_{i1}R_{ik} & \sum_{i = 1}^N \phi_{i1}^2 R_ik & \cdots & \sum_{i = 1}^N \phi_{i1}\phi_{iB}R_{ik} \\
 \vdots & \vdots & \ddots & \vdots \\
 \sum_{i = 1}^N \phi_{iB}R_{ik} & \sum_{i = 1}^N \phi_{iB}\phi_{i1}R_{ik} & \cdots & \sum_{i = 1}^N \phi_{iB}^2R_{ik}
-\end{bmatrix} + \lambda J.
+\end{bmatrix} + \lambda J,
 \end{align*}
-$$
+```
 
-It's easy to see that
+it's easy to see that
 
-$$
-\sum_{i = 1}^N \phi_{ib_1}\phi_{ib_2}R_{ik} = 0
-$$
+```math
+\sum_{i = 1}^N \phi_{ib_1}\phi_{ib_2}R_{ik} = 0 \qquad \text{ for } \quad \forall b_1 \neq b_2
+```
 
-for $\forall b_1 \neq b_2$. And $\sum_{i = 1}^N \phi_{ib}^2 R_{ik} = \sum_{i = 1}^N \phi_{ib} R_{ik}$.
+and
+
+```math
+\sum_{i = 1}^N \phi_{ib}^2 R_{ik} = \sum_{i = 1}^N \phi_{ib} R_{ik}.
+```
 
 Let
 
@@ -238,9 +246,15 @@ N_{bk} &= \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad \Rightarrow \qquad N = \phi^T R 
 \end{align*}
 $$
 
-Then we have $N_k = \sum_{b = 1}^B O_{bk}$, and
+Then we have
 
-$$
+```math
+N_k = \sum_{b = 1}^B O_{bk}
+```
+
+and
+
+```math
 A_k = \begin{bmatrix}
 N_k & O_{1k} & \cdots & O_{Bk} \\
 O_{1k} & O_{1k} & & \\
@@ -252,52 +266,52 @@ O_{1k} & O_{1k} + \lambda & & \\
 \vdots & & \ddots & \\
 O_{Bk} & & & O_{Bk} + \lambda
 \end{bmatrix}.
-$$
+```
 
 Let
 
-$$
+```math
 P = \begin{bmatrix}
 1 & -\frac{O_{1k}}{O_{1k} + \lambda} & \cdots & -\frac{O_{Bk}}{O_{Bk} + \lambda} \\
  & 1 &  &  \\
  & & \ddots & \\
  & & & 1
 \end{bmatrix}
-$$
+```
 
 then
 
-$$
-B = PAP^T = \begin{bmatrix}
+```math
+\mathcal{B} = PAP^T = \begin{bmatrix}
 c & & & \\
   & O_{1k}+\lambda & & \\
   & & \ddots & \\
   & & & O_{Bk}+\lambda
 \end{bmatrix},
-$$
+```
 
 where
 
-$$
+```math
 c = N_k - \sum_{i = 1}^N \frac{O_{ik}^2}{O_{ik}+\lambda}.
-$$
+```
 
-$B$ has inverse
+$\mathcal{B}$ has inverse
 
-$$
-B^{-1} = \begin{bmatrix}
+```math
+\mathcal{B}^{-1} = \begin{bmatrix}
 c^{-1} & & & \\
  & \frac{1}{O_{1k}+\lambda} & & \\
  & & \ddots & \\
  & & & \frac{1}{O_{Bk}+\lambda}
 \end{bmatrix}.
-$$
+```
 
 Therefore,
 
 ```math
 \begin{align*}
-A^{-1} &= P^TB^{-1}P \\
+A^{-1} &= P^T\mathcal{B}^{-1}P \\
 &= \begin{bmatrix}
 c^{-1} & & & \\
 -\frac{O_{1k}}{O_{1k}+\lambda}c^{-1} & \frac{1}{O_{1k}+\lambda} & & \\
