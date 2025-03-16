@@ -115,14 +115,14 @@ $$
 
 2. Update and normalize $R$:
 
-$$
+```math
 \begin{align*}
 R_{in} &= \exp{\Big( -\frac{2(1 - \hat{Z}_{in}\hat{Y}^T)}{\sigma} \Big)};\\
 \Omega &= \phi^{in} \Big( \frac{E+1}{O+1} \Big)^\Theta; \\
 R_{in} &= R_{in} \Omega; \\
 R_{in} &= \text{L1-Normalize}(R_{in}, \text{row}).
 \end{align*}
-$$
+```
 
 where $\Theta = [\theta^T, \dots, \theta^T]$ of shape $B \times K$.
 
@@ -163,7 +163,7 @@ $$
 
 For each cluster $k$,
 
-$$
+```math
 \begin{align*}
 R_k &= [R_{1k}, \dots, R_{Nk}];\\
 \Phi_{R,k}^* &= \phi^{*T} \otimes R_k;\\
@@ -171,7 +171,7 @@ W_k &= (\Phi_{R,k}^* \phi^* + \lambda J)^{-1} \Phi_{R,k}^* Z;\\
 W_k[0, :] &= \mathbf{0};\\
 \hat{Z} &= \hat{Z} - \Phi_{R,k}^{*T} W_k.
 \end{align*}
-$$
+```
 
 where $\otimes$ is multiplication of a matrix and a row vector, and
 
@@ -220,6 +220,7 @@ It's easy to see that
 $$
 \sum_{i = 1}^N \phi_{ib_1}\phi_{ib_2}R_{ik} = 0
 $$
+
 for $\forall b_1 \neq b_2$. And $\sum_{i = 1}^N \phi_{ib}^2 R_{ik} = \sum_{i = 1}^N \phi_{ib} R_{ik}$.
 
 Let
@@ -288,7 +289,7 @@ $$
 
 Therefore,
 
-$$
+```math
 \begin{align*}
 A^{-1} &= P^TB^{-1}P \\
 &= \begin{bmatrix}
@@ -298,5 +299,6 @@ c^{-1} & & & \\
 -\frac{O_{Bk}}{O_{Bk}+\lambda}c^{-1} & & & \frac{1}{O_{Bk}+\lambda}
 \end{bmatrix} \cdot P
 \end{align*}
-$$
+```
+
 which is decomposited into a lower-triangular, a diagonal, and an upper-triangular matrix.
