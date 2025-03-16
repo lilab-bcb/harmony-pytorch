@@ -55,6 +55,7 @@ e_3 &= \sigma \sum_{i, k} \theta R_{ik} \sum_{b}\phi_{ib}\log{\Big( \frac{O_{bk}
     &= \sigma \sum_{i, k} \theta \Big[ O * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big]
 \end{align*}
 $$
+
 where $\theta$ of shape $1 \times B$ are the discounting hyperparameters.
 
 Therefore, the objective function is
@@ -112,6 +113,7 @@ E = E - Pr^T \cdot [R_{in, 1}, \dots, R_{in, K}], \qquad O = O - \phi_{in}^T R_{
 $$
 
 2. Update and normalize $R$:
+
 $$
 \begin{align*}
 R_{in} &= \exp{\Big( -\frac{2(1 - \hat{Z}_{in}\hat{Y}^T)}{\sigma} \Big)};\\
@@ -213,6 +215,7 @@ R_{1k} & & \\
 $$
 
 It's easy to see that
+
 $$
 \sum_{i = 1}^N \phi_{ib_1}\phi_{ib_2}R_{ik} = 0
 $$
@@ -244,6 +247,7 @@ O_{Bk} & & & O_{Bk} + \lambda
 $$
 
 Let
+
 $$
 P = \begin{bmatrix}
 1 & -\frac{O_{1k}}{O_{1k} + \lambda} & \cdots & -\frac{O_{Bk}}{O_{Bk} + \lambda} \\
@@ -254,6 +258,7 @@ P = \begin{bmatrix}
 $$
 
 then
+
 $$
 B = PAP^T = \begin{bmatrix}
 c & & & \\
@@ -262,12 +267,15 @@ c & & & \\
   & & & O_{Bk}+\lambda
 \end{bmatrix},
 $$
+
 where
+
 $$
 c = N_k - \sum_{i = 1}^N \frac{O_{ik}^2}{O_{ik}+\lambda}.
 $$
 
 $B$ has inverse
+
 $$
 B^{-1} = \begin{bmatrix}
 c^{-1} & & & \\
@@ -278,6 +286,7 @@ c^{-1} & & & \\
 $$
 
 Therefore,
+
 $$
 \begin{align*}
 A^{-1} &= P^TB^{-1}P \\
