@@ -188,7 +188,13 @@ $$
 
 ### Improvement
 
-Let $A_k = \phi^{*T}diag(R_k)\phi^* + \lambda J$,
+Let
+
+```math
+A_k = \phi^{*T}diag(R_k)\phi^* + \lambda J,
+```
+
+then
 
 $$
 \begin{align*}
