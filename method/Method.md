@@ -94,12 +94,12 @@ Then L1-normalize $R$ on rows, so that each row sums up to 1.
 
 4. Initialize $E$ and $O$:
 
-$$
+```math
 \begin{align*}
 (E)_{bk} = Pr_b \cdot \sum_{i = 1}^N R_{ik} \qquad &\Rightarrow \qquad E = Pr^T \cdot [R_{\cdot 1}, \dots, R_{\cdot K}];\\
 (O)_{bk} = \sum_{i = 1}^N \phi_{ib}R_{ik} \qquad &\Rightarrow \qquad O = \phi^T R.
 \end{align*}
-$$
+```
 
 5. Compute objective value with $\hat{Y}$, $\hat{Z}$, $R$, $O$, and $E$.
 
