@@ -12,7 +12,7 @@ from .utils import one_hot_tensor, get_batch_codes
 
 def harmonize(
     X: np.array,
-    batch_mat: pd.DataFrame,
+    df_obs: pd.DataFrame,
     batch_key: Union[str, List[str]],
     n_clusters: int = None,
     max_iter_harmony: int = 10,
@@ -22,9 +22,9 @@ def harmonize(
     ridge_lambda: float = 1.0,
     sigma: float = 0.1,
     block_proportion: float = 0.05,
+    init_centroids_method: str = "default",
     theta: float = 2.0,
     tau: int = 0,
-    correction_method: str = "fast",
     random_state: int = 0,
     use_gpu: bool = False,
     n_jobs: int = -1,
@@ -39,11 +39,11 @@ def harmonize(
     X: ``numpy.array``
         The input embedding with rows for cells (N) and columns for embedding coordinates (d).
 
-    batch_mat: ``pandas.DataFrame``
-        The cell barcode information as data frame, with rows for cells (N) and columns for cell attributes.
+    df_obs: ``pandas.DataFrame``
+        The cell barcode attributes as a Pandas Data Frame.
 
     batch_key: ``str`` or ``List[str]``
-        Cell attribute(s) from ``batch_mat`` to identify batches.
+        Cell attribute(s) from ``df_obs`` to identify batches.
 
     n_clusters: ``int``, optional, default: ``None``
         Number of clusters used in Harmony algorithm. If ``None``, choose the minimum of 100 and N / 30.
@@ -69,14 +69,16 @@ def harmonize(
     block_proportion: ``float``, optional, default: ``0.05``
         Proportion of block size in one update operation of clustering step.
 
+    init_centroids_method: ``str``, optional, default: ``default``
+        K-Means method used for intializing centroids. Can be either 'default' or 'harmony-paper'.
+        If using 'default', it will use the default settings of ``sklearn.cluster.KMeans`` function.
+        If choosing 'harmony-paper', it will use the same method as described in Harmony paper, i.e. ``sklearn.cluster.KMeans(..., init='random', n_init=10, max_iter=25, ...)``.
+
     theta: ``float``, optional, default: ``2.0``
         Weight of the diversity penalty term in objective function.
 
     tau: ``int``, optional, default: ``0``
         Discounting factor on ``theta``. By default, there is no discounting.
-
-    correction_method: ``string``, optional, default: ``fast``
-        Choose which method for the correction step: ``original`` for original method, ``fast`` for improved method. By default, use improved method.
 
     random_state: ``int``, optional, default: ``0``
         Random seed for reproducing results.
@@ -139,7 +141,7 @@ def harmonize(
     Z_norm = normalize(Z, p=2, dim=1)
     n_cells = Z.shape[0]
 
-    batch_codes = get_batch_codes(batch_mat, batch_key)
+    batch_codes = get_batch_codes(df_obs, batch_key)
     n_batches = batch_codes.cat.categories.size
     N_b = torch.tensor(
         batch_codes.value_counts(sort=False).values,
@@ -162,8 +164,10 @@ def harmonize(
 
     theta = theta.view(1, -1)
 
-    assert block_proportion > 0 and block_proportion <= 1
-    assert correction_method in {"fast", "original"}
+    assert block_proportion > 0 and block_proportion <= 1, f"block_proportion must be a fraction in range (0, 1]!"
+    block_size = int(n_cells * block_proportion)
+
+    assert init_centroids_method in ["default", "harmony-paper"], f"init_centroids_method must be chosen from ['default', 'harmony-paper']!"
 
     np.random.seed(random_state)
 
@@ -175,6 +179,7 @@ def harmonize(
         Pr_b,
         Phi,
         theta,
+        init_centroids_method,
         None,
         device_type,
         n_jobs,
@@ -183,6 +188,7 @@ def harmonize(
     if verbose:
         print("\tInitialization is completed.")
 
+    rng = np.random.default_rng(random_state)
     for i in range(max_iter_harmony):
         clustering(
             Z_norm,
@@ -191,16 +197,15 @@ def harmonize(
             R,
             E,
             O,
-            n_clusters,
             theta,
             tol_clustering,
             objectives_harmony,
             max_iter_clustering,
             sigma,
-            block_proportion,
-            device_type,
+            block_size,
+            rng,
         )
-        Z_hat = correction(Z, R, Phi, O, ridge_lambda, correction_method, device_type)
+        Z_hat = correction(Z, R, Phi, O, ridge_lambda, device_type)
         Z_norm = normalize(Z_hat, p=2, dim=1)
 
         if verbose:
@@ -226,20 +231,19 @@ def initialize_centroids(
     Pr_b,
     Phi,
     theta,
+    init_centroids_method,
     random_state,
     device_type,
     n_jobs,
-    n_init=10,
 ):
-    n_cells = Z_norm.shape[0]
-
     kmeans_params = {
         "n_clusters": n_clusters,
-        "init": "k-means++",
-        "n_init": n_init,
         "random_state": random_state,
-        "max_iter": 25,
     }
+    if init_centroids_method == "harmony-paper":
+        kmeans_params["init"] = "random"
+        kmeans_params["n_init"] = 10
+        kmeans_params["max_iter"] = 25
 
     kmeans = KMeans(**kmeans_params)
 
@@ -263,7 +267,7 @@ def initialize_centroids(
 
     objectives_harmony = []
     compute_objective(
-        Y_norm, Z_norm, R, theta, sigma, O, E, objectives_harmony, device_type
+        Y_norm, Z_norm, R, theta, sigma, O, E, objectives_harmony
     )
 
     return R, E, O, objectives_harmony
@@ -276,15 +280,13 @@ def clustering(
     R,
     E,
     O,
-    n_clusters,
     theta,
     tol,
     objectives_harmony,
     max_iter,
     sigma,
-    block_proportion,
-    device_type,
-    n_init=10,
+    block_size,
+    rng,
 ):
     n_cells = Z_norm.shape[0]
 
@@ -295,9 +297,7 @@ def clustering(
         Y = torch.matmul(R.t(), Z_norm)
         Y_norm = normalize(Y, p=2, dim=1)
 
-        idx_list = np.arange(n_cells)
-        np.random.shuffle(idx_list)
-        block_size = int(n_cells * block_proportion)
+        idx_list = rng.permutation(n_cells)
         pos = 0
         while pos < len(idx_list):
             idx_in = idx_list[pos : (pos + block_size)]
@@ -324,42 +324,16 @@ def clustering(
             pos += block_size
 
         compute_objective(
-            Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering, device_type
+            Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering
         )
 
         if is_convergent_clustering(objectives_clustering, tol):
-            objectives_harmony.append(objectives_clustering[-1])
             break
 
-
-def correction(X, R, Phi, O, ridge_lambda, correction_method, device_type):
-    if correction_method == "fast":
-        return correction_fast(X, R, Phi, O, ridge_lambda, device_type)
-    else:
-        return correction_original(X, R, Phi, ridge_lambda, device_type)
+    objectives_harmony.append(objectives_clustering[-1])
 
 
-def correction_original(X, R, Phi, ridge_lambda, device_type):
-    n_cells = X.shape[0]
-    n_clusters = R.shape[1]
-    n_batches = Phi.shape[1]
-    Phi_1 = torch.cat((torch.ones(n_cells, 1, device=device_type), Phi), dim=1)
-
-    Z = X.clone()
-    id_mat = torch.eye(n_batches + 1, n_batches + 1, device=device_type)
-    id_mat[0, 0] = 0
-    Lambda = ridge_lambda * id_mat
-    for k in range(n_clusters):
-        Phi_t_diag_R = Phi_1.t() * R[:, k].view(1, -1)
-        inv_mat = torch.inverse(torch.matmul(Phi_t_diag_R, Phi_1) + Lambda)
-        W = torch.matmul(inv_mat, torch.matmul(Phi_t_diag_R, X))
-        W[0, :] = 0
-        Z -= torch.matmul(Phi_t_diag_R.t(), W)
-
-    return Z
-
-
-def correction_fast(X, R, Phi, O, ridge_lambda, device_type):
+def correction(X, R, Phi, O, ridge_lambda, device_type):
     n_cells = X.shape[0]
     n_clusters = R.shape[1]
     n_batches = Phi.shape[1]
@@ -394,9 +368,7 @@ def correction_fast(X, R, Phi, O, ridge_lambda, device_type):
     return Z
 
 
-def compute_objective(
-    Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr, device_type
-):
+def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr):
     kmeans_error = torch.sum(R * 2 * (1 - torch.matmul(Z_norm, Y_norm.t())))
     entropy_term = sigma * torch.sum(
         -torch.distributions.Categorical(probs=R).entropy()
