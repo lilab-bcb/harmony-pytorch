@@ -282,7 +282,7 @@ P = \begin{bmatrix}
 then
 
 ```math
-\mathcal{B} = PAP^T = \begin{bmatrix}
+\mathcal{B}_k = PAP^T = \begin{bmatrix}
 c & & & \\
   & O_{1k}+\lambda & & \\
   & & \ddots & \\
@@ -296,10 +296,10 @@ where
 c = N_k - \sum_{i = 1}^N \frac{O_{ik}^2}{O_{ik}+\lambda}.
 ```
 
-$\mathcal{B}$ has inverse
+$\mathcal{B}_k$ has inverse
 
 ```math
-\mathcal{B}^{-1} = \begin{bmatrix}
+\mathcal{B}^{-1}_k = \begin{bmatrix}
 c^{-1} & & & \\
  & \frac{1}{O_{1k}+\lambda} & & \\
  & & \ddots & \\
@@ -311,7 +311,7 @@ Therefore,
 
 ```math
 \begin{align*}
-A^{-1} &= P^T\mathcal{B}^{-1}P \\
+A^{-1}_k &= P^T\mathcal{B}_k^{-1}P \\
 &= \begin{bmatrix}
 c^{-1} & & & \\
 -\frac{O_{1k}}{O_{1k}+\lambda}c^{-1} & \frac{1}{O_{1k}+\lambda} & & \\
