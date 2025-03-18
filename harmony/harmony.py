@@ -1,3 +1,4 @@
+import time
 import torch
 
 import numpy as np
@@ -172,6 +173,7 @@ def harmonize(
     np.random.seed(random_state)
 
     # Initialize centroids
+    start = time.time()
     R, E, O, objectives_harmony = initialize_centroids(
         Z_norm,
         n_clusters,
@@ -184,13 +186,15 @@ def harmonize(
         device_type,
         n_jobs,
     )
+    print(f"Time in initialize_centroids = {time.time() - start:.2f} s.")
 
     if verbose:
         print("\tInitialization is completed.")
 
     rng = np.random.default_rng(random_state)
+    total_cls_iters = 0
     for i in range(max_iter_harmony):
-        clustering(
+        n_cls_iters = clustering(
             Z_norm,
             Pr_b,
             Phi,
@@ -207,6 +211,7 @@ def harmonize(
         )
         Z_hat = correction(Z, R, Phi, O, ridge_lambda, device_type)
         Z_norm = normalize(Z_hat, p=2, dim=1)
+        total_cls_iters += n_cls_iters
 
         if verbose:
             print(
@@ -220,6 +225,9 @@ def harmonize(
             if verbose:
                 print(f"Reach convergence after {i + 1} iteration(s).")
             break
+
+    print(f"Total clustering iterations = {total_cls_iters}")
+    print(f"Loss:\n{[n.item() for n in objectives_harmony]}")
 
     return Z_hat.numpy() if device_type == "cpu" else Z_hat.cpu().numpy()
 
@@ -292,7 +300,7 @@ def clustering(
 
     objectives_clustering = []
 
-    for _ in range(max_iter):
+    for i in range(max_iter):
         # Compute Cluster Centroids
         Y = torch.matmul(R.t(), Z_norm)
         Y_norm = normalize(Y, p=2, dim=1)
@@ -331,6 +339,7 @@ def clustering(
             break
 
     objectives_harmony.append(objectives_clustering[-1])
+    return i + 1
 
 
 def correction(X, R, Phi, O, ridge_lambda, device_type):
