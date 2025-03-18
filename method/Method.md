@@ -21,17 +21,20 @@ Given an embedding of $N$ cell barcodes in $d$ dimensions, coming from $B$ batch
 
 * K-Means error:
 
-$$
-e_1 = \sum_{i, k} R_{ik}||Z_i - Y_k||^2
-$$
+```math
+e_1 = \sum_{i, k} R_{ik}\ ||Z_i - Y_k||^2 \qquad \text{for} \quad \forall 1 \leq i \leq N \text{ and }\forall 1 \leq k \leq K
+```
 
-for $\forall 1 \leq i \leq N$ and $\forall 1 \leq k \leq K$.
+Moreover, if both $Z_i$ and $Y_k$ are L2-normalized, their euclidean distance can be reduced to cosine distance:
 
-Moreover, if both $Z_i$ and $Y_k$ are L2-normalized, their euclidean distance is transformed as cosine distance:
-
-$$
-e_1 = \sum_{i, k} 2R_{ik}(1 - Z_{i} \cdot Y_{k}^T) = \sum_{i, k} 2R * (1 - Z Y^T)
-$$
+```math
+\begin{align*}
+e_1 &= \sum_{i, k} R_{ik}(|Z_i|^2 + |Y_k|^2 - 2Z_i\cdot Y_k^T ) \\
+    &= \sum_{i, k} R_{ik}(2 - 2Z_i \cdot Y_k^T) \\
+    &= \sum_{i, k} 2R_{ik}(1 - Z_{i} \cdot Y_{k}^T) \\
+    &= \sum_{i, k} 2R * (1 - Z Y^T)
+\end{align*}
+```
 
 where $*$ is element-wise product.
 
@@ -45,13 +48,13 @@ $$
 
 $$
 \begin{align*}
-e_3 &= \sigma \sum_{i, k} \theta R_{ik} \sum_{b}\phi_{ib}\log{\Big( \frac{O_{bk} + 1}{E_{bk} + 1} \Big)} \\
-    &= \sigma \sum_{b, k} \theta \Big[ (\phi^T R) * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big] \\
-    &= \sigma \sum_{i, k} \theta \Big[ O * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big]
+e_3 &= \sigma \sum_{i, k} R_{ik} \sum_{b}\theta_b \phi_{ib}\log{\Big( \frac{O_{bk} + 1}{E_{bk} + 1} \Big)} \\
+    &= \sigma \sum_{k} \theta \Big[ (\phi^T R) * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big] \\
+    &= \sigma \sum_{k} \theta \Big[ O * \log{\Big( \frac{O + 1}{E + 1} \Big)} \Big]
 \end{align*}
 $$
 
-where $\theta$ of shape $1 \times B$ are the discounting hyperparameters.
+where $\theta = [\theta_1, ..., \theta_B]$ of shape $1 \times B$ are the discounting hyperparameters.
 
 Therefore, the objective function is
 
@@ -192,7 +195,13 @@ We don't need to directly calculate the matrix inverse:
 
 of shape $(B+1)\times(B+1)$, which can be time consuming when the number of batches $B$ is high.
 
-Let $A_k = \phi^{*T}diag(R_k)\phi^* + \lambda J$, then
+Let
+
+```math
+A_k = \phi^{*T}diag(R_k)\phi^* + \lambda J,
+```
+
+then
 
 ```math
 W_k = A_k^{-1}\Phi_{R, k}^* Z.
@@ -282,7 +291,7 @@ P = \begin{bmatrix}
 then
 
 ```math
-\mathcal{B}_k = PAP^T = \begin{bmatrix}
+\mathcal{B}_k = PA_kP^T = \begin{bmatrix}
 c & & & \\
   & O_{1k}+\lambda & & \\
   & & \ddots & \\
@@ -307,7 +316,16 @@ c^{-1} & & & \\
 \end{bmatrix}.
 ```
 
-Therefore,
+Now since $P$, $A_k$ and $P^T$ are all square matrices of shape $(B+1)\times(B+1)$ and invertible, we have
+
+```math
+\begin{align*}
+\mathcal{B}_k^{-1} &= (PA_kP^T)^{-1} \\
+    &= (P^T)^{-1} A_k^{-1} P^{-1}.
+\end{align*}
+```
+
+Thus
 
 ```math
 \begin{align*}
