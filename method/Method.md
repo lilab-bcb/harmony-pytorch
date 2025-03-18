@@ -30,7 +30,7 @@ Moreover, if both $Z_i$ and $Y_k$ are L2-normalized, their euclidean distance ca
 ```math
 \begin{align*}
 e_1 &= \sum_{i, k} R_{ik}(|Z_i|^2 + |Y_k|^2 - 2Z_i\cdot Y_k^T ) \\
-    &= \sum_{i, k} R_{ik}(2 - 2Z_i \cdot Y_k^T) \\
+    &= \sum_{i, k} R_{ik}(2 - 2Z_i \cdot Y_k^T) \qquad \qquad ( Z_i \text{ and } Y_k \text{ are L2-normalized}) \\
     &= \sum_{i, k} 2R_{ik}(1 - Z_{i} \cdot Y_{k}^T) \\
     &= \sum_{i, k} 2R * (1 - Z Y^T)
 \end{align*}
