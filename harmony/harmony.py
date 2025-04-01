@@ -191,7 +191,7 @@ def harmonize(
     if verbose:
         print("\tInitialization is completed.")
 
-    rng = np.random.default_rng(random_state)
+    rng = np.random.default_rng()
     total_cls_iters = 0
     for i in range(max_iter_harmony):
         n_cls_iters = clustering(
