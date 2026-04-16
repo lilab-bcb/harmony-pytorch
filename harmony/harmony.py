@@ -15,6 +15,7 @@ def harmonize(
     df_obs: pd.DataFrame,
     batch_key: Union[str, List[str]],
     n_clusters: int = None,
+    flavor: str = "harmony1",
     max_iter_harmony: int = 10,
     max_iter_clustering: int = 200,
     tol_harmony: float = 1e-4,
@@ -48,6 +49,12 @@ def harmonize(
     n_clusters: ``int``, optional, default: ``None``
         Number of clusters used in Harmony algorithm. If ``None``, choose the minimum of 100 and N / 30.
 
+    flavor: ``str``, optional, default: ``harmony1``
+        Available options: "harmony1", "harmony2".
+        ``harmony1`` is the original Harmony algorithm.
+        ``harmony2`` to run the Harmony2 algorithm.
+        Default is ``harmony1``.
+
     max_iter_harmony: ``int``, optional, default: ``10``
         Maximum iterations on running Harmony if not converged.
 
@@ -73,6 +80,7 @@ def harmonize(
         K-Means method used for intializing centroids. Can be either 'default' or 'harmony-paper'.
         If using 'default', it will use the default settings of ``sklearn.cluster.KMeans`` function.
         If choosing 'harmony-paper', it will use the same method as described in Harmony paper, i.e. ``sklearn.cluster.KMeans(..., init='random', n_init=10, max_iter=25, ...)``.
+        Notice that if flavor="harmony2", then always use "default".
 
     theta: ``float``, optional, default: ``2.0``
         Weight of the diversity penalty term in objective function.
@@ -168,6 +176,8 @@ def harmonize(
     block_size = int(n_cells * block_proportion)
 
     assert init_centroids_method in ["default", "harmony-paper"], f"init_centroids_method must be chosen from ['default', 'harmony-paper']!"
+    if flavor == "harmony2":
+        init_centroids_method = "default"
 
     np.random.seed(random_state)
 
@@ -175,6 +185,7 @@ def harmonize(
     R, E, O, objectives_harmony = initialize_centroids(
         Z_norm,
         n_clusters,
+        flavor,
         sigma,
         Pr_b,
         Phi,
@@ -203,6 +214,7 @@ def harmonize(
             max_iter_clustering,
             sigma,
             block_size,
+            flavor,
             rng,
         )
         Z_hat = correction(Z, R, Phi, O, ridge_lambda, device_type)
@@ -227,6 +239,7 @@ def harmonize(
 def initialize_centroids(
     Z_norm,
     n_clusters,
+    flavor,
     sigma,
     Pr_b,
     Phi,
@@ -267,7 +280,7 @@ def initialize_centroids(
 
     objectives_harmony = []
     compute_objective(
-        Y_norm, Z_norm, R, theta, sigma, O, E, objectives_harmony
+        Y_norm, Z_norm, R, theta, sigma, O, E, flavor, objectives_harmony
     )
 
     return R, E, O, objectives_harmony
@@ -286,6 +299,7 @@ def clustering(
     max_iter,
     sigma,
     block_size,
+    flavor,
     rng,
 ):
     n_cells = Z_norm.shape[0]
@@ -324,7 +338,7 @@ def clustering(
             pos += block_size
 
         compute_objective(
-            Y_norm, Z_norm, R, theta, sigma, O, E, objectives_clustering
+            Y_norm, Z_norm, R, theta, sigma, O, E, flavor, objectives_clustering
         )
 
         if is_convergent_clustering(objectives_clustering, tol):
@@ -368,14 +382,19 @@ def correction(X, R, Phi, O, ridge_lambda, device_type):
     return Z
 
 
-def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, objective_arr):
+def compute_objective(Y_norm, Z_norm, R, theta, sigma, O, E, flavor, objective_arr):
     kmeans_error = torch.sum(R * 2 * (1 - torch.matmul(Z_norm, Y_norm.t())))
     entropy_term = sigma * torch.sum(
         -torch.distributions.Categorical(probs=R).entropy()
     )
-    diversity_penalty = sigma * torch.sum(
-        torch.matmul(theta, O * torch.log(torch.div(O + 1, E + 1)))
-    )
+    if flavor == "harmony1":
+        diversity_penalty = sigma * torch.sum(
+            torch.matmul(theta, O * torch.log(torch.div(O + 1, E + 1)))
+        )
+    else:
+        diversity_penalty = sigma * torch.sum(
+            torch.matmul(theta, O * torch.log(torch.div(O + E + 1, E + 1)))
+        )
     objective = kmeans_error + entropy_term + diversity_penalty
 
     objective_arr.append(objective)
