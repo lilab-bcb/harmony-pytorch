@@ -179,8 +179,6 @@ def harmonize(
     if flavor == "harmony2":
         init_centroids_method = "default"
 
-    np.random.seed(random_state)
-
     # Initialize centroids
     R, E, O, objectives_harmony = initialize_centroids(
         Z_norm,
@@ -191,7 +189,7 @@ def harmonize(
         Phi,
         theta,
         init_centroids_method,
-        None,
+        random_state,
         device_type,
         n_jobs,
     )
@@ -199,7 +197,7 @@ def harmonize(
     if verbose:
         print("\tInitialization is completed.")
 
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(random_state)
     for i in range(max_iter_harmony):
         clustering(
             Z_norm,
