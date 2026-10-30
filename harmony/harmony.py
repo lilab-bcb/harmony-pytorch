@@ -87,7 +87,7 @@ def harmonize(
         If ``True``, use GPU if available. Otherwise, use CPU only.
 
     n_jobs: ``int``, optional, default ``-1``
-        How many CPU threads to use. By default, use all physical cores. If 'use_gpu' is True, this option only affects the KMeans step.
+        How many CPU threads to use. By default, use all physical cores, but no more than the CPUs this process may run on. If 'use_gpu' is True, this option only affects the KMeans step.
 
     verbose: ``bool``, optional, default ``True``
         If ``True``, print verbose output.
@@ -116,6 +116,9 @@ def harmonize(
             n_jobs = psutil.cpu_count(
                 logical=True
             )  # if undetermined, use logical cores instead
+        if hasattr(psutil.Process, "cpu_affinity"):
+            # don't exceed the CPUs this process may run on, e.g. a Slurm or container allocation
+            n_jobs = min(n_jobs, len(psutil.Process().cpu_affinity()))
     torch.set_num_threads(n_jobs)
 
     device_type = "cpu"
